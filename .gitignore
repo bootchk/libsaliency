@@ -8,7 +8,6 @@
 /install-sh
 /libtool
 /ltmain.sh
-/m4/
 /missing
 /stamp-h?
 .deps/
@@ -20,3 +19,13 @@
 */Makefile.in
 */*.l[ao]
 */*.o
+
+
+# Project builds a library.  libtool uses /m4 for its macros.
+# Remove /m4 and its contents /m4/ 
+# autoreconf -i should recreate it?
+# configure.ac refers to /m4, if you get an error message about missing /m4, just mkdir m4?
+/m4/
+
+# Remove the built exampleProgram executable
+/exampleProgram/exampleProgram
