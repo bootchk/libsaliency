@@ -24,6 +24,8 @@ Requires these packages for developers:
 - libtool
 - automake
 
+To install them:
+
     sudo apt-get install autotools-dev
     sudo apt-get install libtool
     suto apt-get install automake
@@ -35,7 +37,7 @@ Then:
     make
     sudo make install
 
-The -i means "install missing auxiliary files".
+The -i means "install missing auxiliary files", in this case, create the /m4 directory used by libtool.
 
 
 
