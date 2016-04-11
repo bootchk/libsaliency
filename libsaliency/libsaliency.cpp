@@ -9,6 +9,7 @@
 #include "libsaliency.hpp"
 #include "Gradienter.h"
 #include "Smoother.h"
+#include "Sampler.h"
 
 
 namespace sal {
@@ -382,31 +383,17 @@ void ImageSaliencyDetector::compute() {
 
 	// Perform iterative saliency detection mechanism
 	int squaredNHood = neighborhoodSize * neighborhoodSize;
-	int halfNHood = neighborhoodSize / 2;
 	int reqNumSamples = static_cast<int>(samplingPercentage * (srcImage.cols * srcImage.rows * squaredNHood));
-	int imageHeight = srcImage.rows;
-	int imageWidth = srcImage.cols;
 	int counter = 0;
+
+	Sampler sampler(srcImage.rows, srcImage.cols, neighborhoodSize);
 
 	while (counter < reqNumSamples) {
 		KernelDensityInfo kernelSum;
 		BoundingBox2D bounds;
-		std::vector<Location2D> samples(4);
+		TSamples samples;
 
-		// Randomly select the location of the first sample
-		samples[0].y = rand() % imageHeight;
-		samples[0].x = rand() % imageWidth;
-
-		// The other 3 samples MUST be selected in the neighborhood of the first
-		samples[1].y = (rand() % neighborhoodSize) + (samples[0].y - halfNHood);
-		samples[1].x = (rand() % neighborhoodSize) + (samples[0].x - halfNHood);
-
-		samples[2].y = (rand() % neighborhoodSize) + (samples[0].y - halfNHood);
-		samples[2].x = (rand() % neighborhoodSize) + (samples[0].x - halfNHood);
-
-		samples[3].y = (rand() % neighborhoodSize) + (samples[0].y - halfNHood);
-		samples[3].x = (rand() % neighborhoodSize) + (samples[0].x - halfNHood);
-
+		samples = sampler.getSample();
 		kernelSum = calculateKernelSum(samples);
 		bounds = getApplicableBounds(samples);
 		updateApplicableRegion(bounds, kernelSum);
