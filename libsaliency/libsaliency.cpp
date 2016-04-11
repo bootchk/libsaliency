@@ -378,15 +378,15 @@ void ImageSaliencyDetector::compute() {
 
 		samples = sampler.getSample();
 
-		// Note this differs from original algorithm,
-		// which seemed update with a zero kernelSum when sample not in bounds
+		// lkk Note this differs from original code,
+		// which seemed to update with a zero kernelSum when sample not in bounds
+		// and also counted that sample.
 		if (sampler.isSampleInImageBounds(samples)) {
 			kernelSum = calculateKernelSum(samples);
 			bounds = getApplicableBounds(samples);
 			updateApplicableRegion(bounds, kernelSum);
+			++counter;
 		}
-
-		++counter;
 	}
 
 	updateSaliencyMap();
