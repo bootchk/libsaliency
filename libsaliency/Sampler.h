@@ -8,12 +8,15 @@ namespace sal {
 /// Alias for 2D Pixel location
 typedef cv::Point2i Location2D;
 
+
 typedef std::vector<Location2D> TSamples;
 
 
 
 /*
 \brief Class to generate samples.
+Special to ImageSaliencyDetector.
+One instance owned by ImageSaliencyDetector.
 
 Valid calling sequence:  getSample
  */
@@ -27,6 +30,7 @@ public:
 	virtual ~Sampler();
 
 	TSamples getSample();
+	bool isSampleInImageBounds(TSamples&);
 
 private:
 

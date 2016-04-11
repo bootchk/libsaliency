@@ -260,10 +260,6 @@ private:
 	 */
 	void updateSaliencyMap();
 
-	/*!
-	 * Determine if sample locations are within the valid image boundaries
-	 */
-	bool inValidImageBounds(const std::vector<Location2D>& samples);
 
 	/*!
 	 * Updates the entropy of a pixel given the iteratively-estimated distribution of

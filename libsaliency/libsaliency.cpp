@@ -120,24 +120,6 @@ void ImageSaliencyDetector::quantizeMagnitudes() {
 }
 
 
-bool ImageSaliencyDetector::inValidImageBounds(const std::vector<Location2D>& samples) {
-	assert(!srcImage.empty());
-	assert(samples.size() == 4);
-
-	bool isValid = true;
-	int height = srcImage.rows;
-	int width = srcImage.cols;
-
-	for (size_t i = 0; i < 4; ++i) {
-		if (samples[i].y < 0 || samples[i].y >= height || samples[i].x < 0 || samples[i].x >= width) {
-			isValid = false;
-		}
-	}
-
-	return isValid;
-}
-
-
 KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const std::vector<Location2D>& samples) {
 	assert(!srcImage.empty());
 	assert(!magnitudes.empty());
@@ -156,34 +138,35 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const std::vector<Lo
 	float dNorm = (2.5066 * distanceBinWidth);
 	float aNorm = (2.5066 * angleBinWidth);
 
-	if (inValidImageBounds(samples)) {
-		Location2D first  = samples[0];
-		Location2D second = samples[1];
-		Location2D third  = samples[2];
-		Location2D fourth = samples[3];
+	// assert samples are in image bounds
 
-		sampleDistance1 = sqrt(pow((first.y - second.y), 2) + pow((first.x - second.x), 2));
-		sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
+	Location2D first  = samples[0];
+	Location2D second = samples[1];
+	Location2D third  = samples[2];
+	Location2D fourth = samples[3];
+
+	sampleDistance1 = sqrt(pow((first.y - second.y), 2) + pow((first.x - second.x), 2));
+	sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
 
 
-		sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
-		sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
+	sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
+	sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
 
-		sampleMag1   = sqrt(pow(magnitudes(first.y, first.x) - magnitudes(second.y, second.x), 2));
-		sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
+	sampleMag1   = sqrt(pow(magnitudes(first.y, first.x) - magnitudes(second.y, second.x), 2));
+	sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
 
-		kernelInfo.firstWeight  = sampleMag1;
-		kernelInfo.secondWeight = sampleMag2;
+	kernelInfo.firstWeight  = sampleMag1;
+	kernelInfo.secondWeight = sampleMag2;
 
-		distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
-		angleKernel    = (1.f / aNorm) * exp((pow(sampleAngle1 - sampleAngle2, 2) / (-2.f * pow(angleBinWidth, 2))));
+	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
+	angleKernel    = (1.f / aNorm) * exp((pow(sampleAngle1 - sampleAngle2, 2) / (-2.f * pow(angleBinWidth, 2))));
 
-		if (sampleMag1 > 0 && sampleMag2 > 0 && distanceKernel > 0 && angleKernel > 0) {
-			kernelInfo.kernelSum = (sampleMag1 * sampleMag2 * distanceKernel * angleKernel);
-		} else {
-			kernelInfo.kernelSum = 0;
-		}
+	if (sampleMag1 > 0 && sampleMag2 > 0 && distanceKernel > 0 && angleKernel > 0) {
+		kernelInfo.kernelSum = (sampleMag1 * sampleMag2 * distanceKernel * angleKernel);
+	} else {
+		kernelInfo.kernelSum = 0;
 	}
+
 
 	return kernelInfo;
 }
@@ -394,9 +377,14 @@ void ImageSaliencyDetector::compute() {
 		TSamples samples;
 
 		samples = sampler.getSample();
-		kernelSum = calculateKernelSum(samples);
-		bounds = getApplicableBounds(samples);
-		updateApplicableRegion(bounds, kernelSum);
+
+		// Note this differs from original algorithm,
+		// which seemed update with a zero kernelSum when sample not in bounds
+		if (sampler.isSampleInImageBounds(samples)) {
+			kernelSum = calculateKernelSum(samples);
+			bounds = getApplicableBounds(samples);
+			updateApplicableRegion(bounds, kernelSum);
+		}
 
 		++counter;
 	}
