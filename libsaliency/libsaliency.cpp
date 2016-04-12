@@ -6,11 +6,13 @@
 #include <ctime>
 #include <cmath>
 
+#include "Bounder.h"
 #include "libsaliency.hpp"
 #include "Gradienter.h"
 #include "Smoother.h"
 // #include "Sampler.h"
 #include "SamplePool.h"
+
 
 
 
@@ -122,7 +124,7 @@ void ImageSaliencyDetector::quantizeMagnitudes() {
 }
 
 
-KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const std::vector<Location2D>& samples) {
+KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samples) {
 	assert(!srcImage.empty());
 	assert(!magnitudes.empty());
 	assert(!orientations.empty());
@@ -174,51 +176,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const std::vector<Lo
 }
 
 
-BoundingBox2D ImageSaliencyDetector::getApplicableBounds(const std::vector<Location2D>& samples) {
-	BoundingBox2D bounds;
-	int L = neighborhoodSize;
-	int maxX = samples[0].x;
-	int minX = samples[0].x;
-	int maxY = samples[0].y;
-	int minY = samples[0].y;
-	int xDiff = 0;		// Differences between the max / min x values
-	int yDiff = 0;		// Differences between the max / min y values
-	int xDisp = 0;		// The disparity in the x axis for forming an M x M neighborhood
-	int yDisp = 0;		// The disparity in the y axis for forming an M x M neighborhood
 
-	// Get the maximum and minimum, x and y, of samples
-	// Max and mins already initialized for sample[0], iterate over samples[1..3]
-	for (int i = 1; i < 4; i++) {
-		if (samples[i].x > maxX) maxX = samples[i].x;
-		if (samples[i].y > maxY) maxY = samples[i].y;
-		if (samples[i].x < minX) minX = samples[i].x;
-		if (samples[i].y < minY) minY = samples[i].y;
-	}
-
-	// Calculate the differences between the max / min values
-	xDiff = maxX - minX;
-	yDiff = maxY - minY;
-
-	// Get the x and y disparity
-	// lkk Why -1 ?
-	xDisp = (L - xDiff) - 1;
-	yDisp = (L - yDiff) - 1;
-
-	// Calculate the applicable bounds
-	bounds.topLeft.x = minX - xDisp;
-	bounds.topLeft.y = minY - yDisp;
-
-	bounds.topRight.x = maxX + xDisp;
-	bounds.topRight.y = minY - yDisp;
-
-	bounds.botLeft.x = minX - xDisp;
-	bounds.botLeft.y = maxY + yDisp;
-
-	bounds.botRight.x = maxX + xDisp;
-	bounds.botRight.y = maxY + yDisp;
-
-	return bounds;
-}
 
 
 void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
@@ -249,7 +207,7 @@ void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
 }
 
 
-void ImageSaliencyDetector::updateApplicableRegion(const BoundingBox2D& bounds, const KernelDensityInfo& kernelSum) {
+void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum) {
 	assert(!densityEstimates.empty());
 	assert(!densityEstimates[0].empty());
 
@@ -257,22 +215,24 @@ void ImageSaliencyDetector::updateApplicableRegion(const BoundingBox2D& bounds, 
 	int width = srcImage.cols;
 	int height = srcImage.rows;
 
-	// Bounds is not clamped to image bounds
+	// Bounds are wild: not clamped to image bounds
 	// assert(bounds.topLeft.x >=0 and bounds.botRight.x < width);
 	// assert(bounds.topLeft.y >=0 and bounds.botRight.x < height);
 
 	// Bounds define an aligned rect
+	/*
 	assert(bounds.topLeft.x == bounds.botLeft.x);
 	assert(bounds.topRight.x == bounds.botRight.x);
 	assert(bounds.topLeft.y == bounds.topRight.y);
 	assert(bounds.botLeft.y == bounds.botRight.y);
+	*/
 
 	// Density estimates and image are also aligned rects (not sparse and no transparency.)
 
-	// Iterate over coordinates of the bounds
-	for (int i = bounds.topLeft.y; i <= bounds.botLeft.y; i++) {
-		for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
-
+	// Iterate over coordinates of aligned bounding rect
+	for (int i = bounds.y; i <= bounds.y + bounds.height; i++) {
+		//for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
+		for (int j = bounds.x; j <= bounds.x + bounds.width; j++) {
 			// Clamp location (i,j) to image bounds
 			// But isn't bounds already clamped to image bounds???
 			if (i >= 0 && i < height && j >= 0 && j < width) {
@@ -396,9 +356,12 @@ void ImageSaliencyDetector::compute() {
     printf("Total(all threads) time generating samples: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 
     tStart = clock();
+
+    Bounder bounder = Bounder(neighborhoodSize);
+
 	while (counter < reqNumSamples) {
 		KernelDensityInfo kernelSum;
-		BoundingBox2D bounds;
+		cv::Rect bounds;
 		TSamples samples;
 
 		// samples = sampler.getCandidateSample();
@@ -410,7 +373,7 @@ void ImageSaliencyDetector::compute() {
 		// and also counted that sample.
 		// if (sampler.isSampleInImageBounds(samples)) {
 			kernelSum = calculateKernelSum(samples);
-			bounds = getApplicableBounds(samples);
+			bounds = bounder.getApplicableBounds(samples);
 			updateApplicableRegion(bounds, kernelSum);
 			++counter;
 		//}

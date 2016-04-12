@@ -39,7 +39,6 @@
 
 #include <opencv2/core/core.hpp>
 
-
 namespace sal
 {
 
@@ -118,21 +117,6 @@ public:
 	/// Alias for 3D Pixel location
 	typedef cv::Point3i Location3D;
 
-	/*!
-	 * Stores the applicable bounding region of the 4 pixels forming
-	 * the two samples used for incremental kernel density estimation
-	 */
-	// lkk Equivalent to cv::RotatedRect
-	// Sides of rectangle are NOT aligned with axises
-	// Sell also cv::minAreaRect
-	// Can contain negative indices.
-	struct BoundingBox2D {
-		Location2D topLeft;
-		Location2D topRight;
-		Location2D botLeft;
-		Location2D botRight;
-	};
-
 
 public:
 	SaliencyDetector() : samplingPercentage(0.25f), neighborhoodSize(5) { };
@@ -178,8 +162,6 @@ protected:
 
 /// Convenience aliases
 typedef SaliencyDetector::KernelDensityInfo KernelDensityInfo;
-typedef SaliencyDetector::BoundingBox2D BoundingBox2D;
-
 
 
 
@@ -246,18 +228,20 @@ private:
 	 * Calculate the intermediate kernel sum from the contribution of the
 	 * pixels given by samples
 	 */
+	// TODO use TSamples instead
+	// How to include Samples.h without exposing it in the public API?
 	KernelDensityInfo calculateKernelSum(const std::vector<Location2D>& samples);
 
 	/*!
 	 * Gets the applicable region of the pixels forming two samples
 	 * that can be updated
 	 */
-	BoundingBox2D getApplicableBounds(const std::vector<Location2D>& samples);
+	// cv::Rect getApplicableBounds(const std::vector<Location2D>& samples);
 
 	/*!
 	 * Updating the kernel sums of the pixels within the applicable region given
 	 */
-	void updateApplicableRegion(const BoundingBox2D& bounds, const KernelDensityInfo& kernelSum);
+	void updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum);
 
 	/*!
 	 * Updates the saliency map using the most recent density estimates
