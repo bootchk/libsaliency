@@ -215,34 +215,21 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 	int width = srcImage.cols;
 	int height = srcImage.rows;
 
-	// Bounds are wild: not clamped to image bounds
-	// assert(bounds.topLeft.x >=0 and bounds.botRight.x < width);
-	// assert(bounds.topLeft.y >=0 and bounds.botRight.x < height);
-
 	// Bounds define an aligned rect
-	/*
-	assert(bounds.topLeft.x == bounds.botLeft.x);
-	assert(bounds.topRight.x == bounds.botRight.x);
-	assert(bounds.topLeft.y == bounds.topRight.y);
-	assert(bounds.botLeft.y == bounds.botRight.y);
-	*/
-
-	// Density estimates and image are also aligned rects (not sparse and no transparency.)
+	// Bounds are clamped to image bounds.
+	// I.E. assert bounding rect contained in image
+	// Also assert bounding rect is square of dimension neighborhoodSize
 
 	// Iterate over coordinates of aligned bounding rect
 	for (int i = bounds.y; i <= bounds.y + bounds.height; i++) {
 		//for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
 		for (int j = bounds.x; j <= bounds.x + bounds.width; j++) {
-			// Clamp location (i,j) to image bounds
-			// But isn't bounds already clamped to image bounds???
-			if (i >= 0 && i < height && j >= 0 && j < width) {
-				if (densityEstimates[i][j].sampleCount < sampleCountLimit) {
-					sumKernelResultToDensityEstimate(kernelSum, i, j);
+			if (densityEstimates[i][j].sampleCount < sampleCountLimit) {
+				sumKernelResultToDensityEstimate(kernelSum, i, j);
 
-					// Update the pixel entropy every N (= 32) iterations
-					if (((densityEstimates[i][j].sampleCount + 1) % 32) == 0) {
-						updatePixelEntropy(densityEstimates[i][j]);
-					}
+				// Update the pixel entropy every N (= 32) iterations
+				if (((densityEstimates[i][j].sampleCount + 1) % 32) == 0) {
+					updatePixelEntropy(densityEstimates[i][j]);
 				}
 			}
 		}
@@ -357,7 +344,7 @@ void ImageSaliencyDetector::compute() {
 
     tStart = clock();
 
-    Bounder bounder = Bounder(neighborhoodSize);
+    Bounder bounder = Bounder(neighborhoodSize,  cv::Rect(0, 0, srcImage.cols, srcImage.rows));
 
 	while (counter < reqNumSamples) {
 		KernelDensityInfo kernelSum;

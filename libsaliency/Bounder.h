@@ -19,13 +19,14 @@ TODO make it also clip the bounding rect to the image.
 */
 class Bounder {
 public:
-	explicit Bounder(int neighborhoodSize);
+	explicit Bounder(int neighborhoodSize, cv::Rect imageRect);
 	virtual ~Bounder();
 
 	cv::Rect getApplicableBounds(const TSamples&);
 
 private:
 	int neighborhoodSize;
+	cv::Rect imageRect;
 };
 
 } // namespace
