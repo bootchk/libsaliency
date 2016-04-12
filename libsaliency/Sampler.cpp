@@ -1,5 +1,6 @@
 
 #include <opencv2/core/core.hpp>
+
 #include "Sampler.h"
 
 namespace sal {
@@ -8,19 +9,35 @@ namespace sal {
 Sampler::Sampler(
 	int imageHeight,
 	int imageWidth,
-	int neighborhoodSize)
+	int neighborhoodSize,
+	int requiredSampleCount)
 {
 	this->imageHeight = imageHeight;
 	this->imageWidth = imageWidth;
 	this->neighborhoodSize =  neighborhoodSize;
 	this->halfNHood = neighborhoodSize / 2;
-
+	this->requiredSampleCount = requiredSampleCount;
 }
 
 Sampler::~Sampler() { }
 
-
 TSamples Sampler::getSample() {
+
+	TSamples result;
+	do {
+		result = getCandidateSample();
+	}
+	while (not isSampleInImageBounds(result));
+
+	// assert result samples in bounds
+	return result;
+}
+
+// Private
+
+
+TSamples Sampler::getCandidateSample() {
+	// Result is not necessarily in image bounds
 	TSamples result(4);
 
 	// Randomly select the location of the first sample
@@ -40,6 +57,7 @@ TSamples Sampler::getSample() {
 	// !!! Not assert that all locations are in image
 	return result;
 }
+
 
 // Are sample locations within valid image boundaries
 bool Sampler::isSampleInImageBounds(TSamples& samples) {

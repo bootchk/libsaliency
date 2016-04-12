@@ -9,7 +9,9 @@
 #include "libsaliency.hpp"
 #include "Gradienter.h"
 #include "Smoother.h"
-#include "Sampler.h"
+// #include "Sampler.h"
+#include "SamplePool.h"
+
 
 
 namespace sal {
@@ -348,6 +350,8 @@ void ImageSaliencyDetector::performPostProcessing() {
 
 
 void ImageSaliencyDetector::compute() {
+	clock_t tStart;
+
 	if (srcImage.empty()) {
 		throw std::logic_error("ImageSaliencyDetector: Source image is empty!");
 	}
@@ -364,32 +368,41 @@ void ImageSaliencyDetector::compute() {
 
 	std::cout << "Iterating on samples.\n";
 
+
 	// Perform iterative saliency detection mechanism
 	int squaredNHood = neighborhoodSize * neighborhoodSize;
 	int reqNumSamples = static_cast<int>(samplingPercentage * (srcImage.cols * srcImage.rows * squaredNHood));
 	int counter = 0;
 
-	Sampler sampler(srcImage.rows, srcImage.cols, neighborhoodSize);
+	// Sampler sampler(srcImage.rows, srcImage.cols, neighborhoodSize, reqNumSamples);
+	tStart = clock();
+    SamplePool samplePool;
+    samplePool.fillWithValidSamples(srcImage.rows, srcImage.cols, neighborhoodSize, reqNumSamples);
+    printf("Total(all threads) time generating samples: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 
+    tStart = clock();
 	while (counter < reqNumSamples) {
 		KernelDensityInfo kernelSum;
 		BoundingBox2D bounds;
 		TSamples samples;
 
-		samples = sampler.getSample();
+		// samples = sampler.getCandidateSample();
+		samples = samplePool.getNextSample();
+		// assert samples from pool is in image bounds
 
 		// lkk Note this differs from original code,
 		// which seemed to update with a zero kernelSum when sample not in bounds
 		// and also counted that sample.
-		if (sampler.isSampleInImageBounds(samples)) {
+		// if (sampler.isSampleInImageBounds(samples)) {
 			kernelSum = calculateKernelSum(samples);
 			bounds = getApplicableBounds(samples);
 			updateApplicableRegion(bounds, kernelSum);
 			++counter;
-		}
+		//}
 	}
 
 	updateSaliencyMap();
+	printf("Total(all threads) time iterating: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 }
 
 

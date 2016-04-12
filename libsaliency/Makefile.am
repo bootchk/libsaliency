@@ -8,7 +8,8 @@ lib_LTLIBRARIES = libsaliency.la
 # Build information for each library
 
 # Sources for libsaliency
-libsaliency_la_SOURCES = libsaliency.cpp Gradienter.cpp Smoother.cpp Sampler.cpp Gradienter.h Smoother.h Sampler.h 
+libsaliency_la_SOURCES = libsaliency.cpp Gradienter.cpp Smoother.cpp Sampler.cpp SamplePool.cpp \
+   Gradienter.h Smoother.h Sampler.h SamplePool.h Samples.h
 
 # Linker options libTestProgram
 libsaliency_la_LDFLAGS = 

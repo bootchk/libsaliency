@@ -14,6 +14,7 @@ using namespace std;
 int main(int argc, char *argv[]) {
 	cv::Mat1f img = cv::imread("data/croppedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
 	// cv::Mat1f img = cv::imread("data/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
+	// cv::Mat1f img = cv::imread("data/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
 	if (img.empty()) {
 		cout << "No image loaded. Exiting.\n";
