@@ -122,6 +122,10 @@ public:
 	 * Stores the applicable bounding region of the 4 pixels forming
 	 * the two samples used for incremental kernel density estimation
 	 */
+	// lkk Equivalent to cv::RotatedRect
+	// Sides of rectangle are NOT aligned with axises
+	// Sell also cv::minAreaRect
+	// Can contain negative indices.
 	struct BoundingBox2D {
 		Location2D topLeft;
 		Location2D topRight;
@@ -260,6 +264,7 @@ private:
 	 */
 	void updateSaliencyMap();
 
+	void sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelSum, int x, int y);
 
 	/*!
 	 * Updates the entropy of a pixel given the iteratively-estimated distribution of

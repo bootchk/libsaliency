@@ -186,7 +186,8 @@ BoundingBox2D ImageSaliencyDetector::getApplicableBounds(const std::vector<Locat
 	int xDisp = 0;		// The disparity in the x axis for forming an M x M neighborhood
 	int yDisp = 0;		// The disparity in the y axis for forming an M x M neighborhood
 
-	// Get the maximum / minimum x and y values of the pixels
+	// Get the maximum and minimum, x and y, of samples
+	// Max and mins already initialized for sample[0], iterate over samples[1..3]
 	for (int i = 1; i < 4; i++) {
 		if (samples[i].x > maxX) maxX = samples[i].x;
 		if (samples[i].y > maxY) maxY = samples[i].y;
@@ -199,6 +200,7 @@ BoundingBox2D ImageSaliencyDetector::getApplicableBounds(const std::vector<Locat
 	yDiff = maxY - minY;
 
 	// Get the x and y disparity
+	// lkk Why -1 ?
 	xDisp = (L - xDiff) - 1;
 	yDisp = (L - yDiff) - 1;
 
@@ -238,18 +240,12 @@ void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
 		// Another special case: if the calculated values are -ve or NaNs
 		if (estimation <= 1e-15) {
 			kernelInfo.entropy = ERROR_FLAG;
-
 		} else if (isnan(estimation)) {
 			kernelInfo.entropy = ERROR_FLAG;
-
 		} else {
 			kernelInfo.entropy = -1.0f * log2f(estimation * estimation);
-
 		}
-
-
 	}
-
 }
 
 
@@ -261,19 +257,29 @@ void ImageSaliencyDetector::updateApplicableRegion(const BoundingBox2D& bounds, 
 	int width = srcImage.cols;
 	int height = srcImage.rows;
 
+	// Bounds is not clamped to image bounds
+	// assert(bounds.topLeft.x >=0 and bounds.botRight.x < width);
+	// assert(bounds.topLeft.y >=0 and bounds.botRight.x < height);
+
+	// Bounds define an aligned rect
+	assert(bounds.topLeft.x == bounds.botLeft.x);
+	assert(bounds.topRight.x == bounds.botRight.x);
+	assert(bounds.topLeft.y == bounds.topRight.y);
+	assert(bounds.botLeft.y == bounds.botRight.y);
+
+	// Density estimates and image are also aligned rects (not sparse and no transparency.)
+
+	// Iterate over coordinates of the bounds
 	for (int i = bounds.topLeft.y; i <= bounds.botLeft.y; i++) {
 		for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
 
+			// Clamp location (i,j) to image bounds
+			// But isn't bounds already clamped to image bounds???
 			if (i >= 0 && i < height && j >= 0 && j < width) {
 				if (densityEstimates[i][j].sampleCount < sampleCountLimit) {
-					densityEstimates[i][j].kernelSum += kernelSum.kernelSum;
-					densityEstimates[i][j].firstWeight += kernelSum.firstWeight;
-					densityEstimates[i][j].secondWeight += kernelSum.secondWeight;
-					densityEstimates[i][j].sampleCount++;
+					sumKernelResultToDensityEstimate(kernelSum, i, j);
 
-					/*
-					 * Update the pixel entropy every N (= 32) iterations
-					 */
+					// Update the pixel entropy every N (= 32) iterations
 					if (((densityEstimates[i][j].sampleCount + 1) % 32) == 0) {
 						updatePixelEntropy(densityEstimates[i][j]);
 					}
@@ -281,6 +287,15 @@ void ImageSaliencyDetector::updateApplicableRegion(const BoundingBox2D& bounds, 
 			}
 		}
 	}
+}
+
+
+void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelResult, int x, int y)
+{
+	densityEstimates[x][y].kernelSum += kernelResult.kernelSum;
+	densityEstimates[x][y].firstWeight += kernelResult.firstWeight;
+	densityEstimates[x][y].secondWeight += kernelResult.secondWeight;
+	densityEstimates[x][y].sampleCount++;
 }
 
 
