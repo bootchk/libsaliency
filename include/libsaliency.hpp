@@ -170,8 +170,7 @@ typedef SaliencyDetector::KernelDensityInfo KernelDensityInfo;
  */
 class ImageSaliencyDetector : public SaliencyDetector {
 public:
-	/// Constructor that takes a source image as input
-	ImageSaliencyDetector (const cv::Mat1f& src);
+	ImageSaliencyDetector (const cv::Mat& src);
 
 	/// Destructor
 	~ImageSaliencyDetector();
@@ -264,14 +263,6 @@ private:
 	cv::Mat1f saliencyMap;
 	std::vector< std::vector<KernelDensityInfo> > densityEstimates;
 
-};
-
-
-/**
- * \brief Video saliency detector
- */
-class VideoSaliencyDetector : public SaliencyDetector {
-	// TODO: re-implement
 };
 
 

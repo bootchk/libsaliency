@@ -61,11 +61,9 @@ void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& si
 /// ImageSaliencyDetector Methods
 //////////////////////////////////////////////////////////////////////////////////////////
 
-ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat1f& src) {
-	if (src.empty()) {
-		throw std::invalid_argument("ImageSaliencyDetector: Source image cannot be empty!");
-	}
-
+ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
+	assert(!src.empty());
+	assert(src.channels() == 1);
 	setSourceImage(src);
 
 	densityEstimates.resize(srcImage.rows);
@@ -369,13 +367,6 @@ void ImageSaliencyDetector::compute() {
 	updateSaliencyMap();
 	printf("Total(all threads) time iterating: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 }
-
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-/// VideoSaliencyDetector Methods
-//////////////////////////////////////////////////////////////////////////////////////////
 
 
 } /* namespace sal */
