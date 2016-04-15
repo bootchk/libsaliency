@@ -9,22 +9,20 @@
 
 namespace sal {
 
-// Class to hide implementation of gradient.
-// Now adapts to openCL, original used de novo implementations.
-// Owns the images it computes (magnitude and direction)
+
 
 Gradienter::Gradienter() { }
 Gradienter::~Gradienter() { }
 
 
-void Gradienter::compute(const cv::Mat1f& src) {
+void Gradienter::compute(const cv::Mat& src) {
 	assert(!src.empty() && src.cols >= 3 && src.rows >= 3);
 
 
-	cv::Mat1f deltaX, deltaY;
+	cv::Mat deltaX, deltaY;
 
 	// lkk Its not clear to me that smoothing is beneficial here ???
-	cv::Mat1f smoothedImg;
+	cv::Mat smoothedImg;
 	Smoother smoother(0);	// 0 means use default sigma
 
 	std::cout << "Smoothing...\n";
@@ -46,9 +44,9 @@ void Gradienter::compute(const cv::Mat1f& src) {
 
 
 void Gradienter::calculateXAndYDerivatives(
-		const cv::Mat1f& inImage,
-		cv::Mat1f& deltaX,
-		cv::Mat1f& deltaY)
+		const cv::Mat& inImage,	// In: many channels
+		cv::Mat& deltaX,	// Out: one channel
+		cv::Mat& deltaY)
 {
 	// Implementation: openCV.  Differs from original.
 	// First derivative.
@@ -61,8 +59,9 @@ void Gradienter::calculateXAndYDerivatives(
 	// Grayscale only ?
 
 	std::cout << "Create...\n";
-	deltaX.create(inImage.rows, inImage.cols);
-	deltaY.create(inImage.rows, inImage.cols);
+	//  !!! Create mat having same type i.e. channel count
+	deltaX.create(inImage.rows, inImage.cols, inImage.type());
+	deltaY.create(inImage.rows, inImage.cols, inImage.type());
 
 	// Handle pixels at borders?
 	std::cout << "Sobel...\n";
@@ -74,29 +73,30 @@ void Gradienter::calculateXAndYDerivatives(
 }
 
 
-void Gradienter::calculateGradientDirectionsAndMagnitudes(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY)
+void Gradienter::calculateGradientDirectionsAndMagnitudes(const cv::Mat& deltaX, const cv::Mat& deltaY)
 {
 	assert(deltaX.size == deltaY.size);
-	this->gradMagnitudes.create(deltaX.rows, deltaX.cols);
-	this->gradOrientations.create(deltaX.rows, deltaX.cols);
+	// !!! Create mat having same type i.e. channel count
+	this->gradMagnitudes.create(deltaX.rows, deltaX.cols, deltaX.type());
+	this->gradOrientations.create(deltaX.rows, deltaX.cols, deltaX.type());
 	cv::cartToPolar(deltaX, deltaY, this->gradMagnitudes, this->gradOrientations);
 }
 
 
 // Obsolete, not necessarily used
 // Direction of gradient, in radians specified counteclockwise from the positive x-axis
-void Gradienter::calculateGradientDirections(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY)
+void Gradienter::calculateGradientDirections(const cv::Mat& deltaX, const cv::Mat& deltaY)
 {
 	assert(deltaX.size == deltaY.size);
-	this->gradOrientations.create(deltaX.rows, deltaX.cols);
+	this->gradOrientations.create(deltaX.rows, deltaX.cols, deltaX.type());
 	cv::phase(deltaX, deltaY, this->gradOrientations);
 }
 
 
-void Gradienter::calculateGradientMagnitudes(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY)
+void Gradienter::calculateGradientMagnitudes(const cv::Mat& deltaX, const cv::Mat& deltaY)
 {
 	assert(deltaX.size == deltaY.size);
-	this->gradMagnitudes.create(deltaX.rows, deltaX.cols);
+	this->gradMagnitudes.create(deltaX.rows, deltaX.cols, deltaX.type());
 	cv::magnitude(deltaX, deltaY, this->gradMagnitudes);
 }
 

@@ -9,6 +9,10 @@ namespace sal {
 /*
 \brief Class to smooth an image.
 
+Agnostic of channel count
+
+Implementation now is openCL, original used de novo implementations.
+
 Valid calling sequence:  compute ... getGradMagnitude
 */
 class Smoother {
@@ -18,7 +22,7 @@ public:
 
 
 	/// Smooth the input image and store the result in smoothedImg
-	void smoothImage(const cv::Mat1f& src, cv::Mat1f& smoothedImg);
+	void smoothImage(const cv::Mat& src, cv::Mat& smoothedImg);
 
 	float getSigma() const { return sigma; }
 

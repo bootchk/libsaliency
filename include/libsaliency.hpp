@@ -111,10 +111,8 @@ public:
 		int sampleCount;
 	};
 
-	/// Alias for 2D Pixel location
+	/// Alias
 	typedef cv::Point2i Location2D;
-
-	/// Alias for 3D Pixel location
 	typedef cv::Point3i Location3D;
 
 
@@ -125,28 +123,17 @@ public:
 	/// Compute the saliency of an image or a 3D volume of frames
 	virtual void compute() = 0;
 
-	void setSamplingPercentage(const float& p) {
-		if (p > 0) samplingPercentage = p;
-	}
-
-	void setNeighborhoodSize(const int& m) {
-		if (m > 0) neighborhoodSize = m;
-	}
-
-	float getSamplingPercentage() const {
-		return samplingPercentage;
-	}
-
-	int getNeighborhoodSize() const {
-		return neighborhoodSize;
-	}
+	void setSamplingPercentage(const float& p) { if (p > 0) samplingPercentage = p; }
+	void setNeighborhoodSize(const int& m) { if (m > 0) neighborhoodSize = m; }
+	float getSamplingPercentage() const { return samplingPercentage; }
+	int getNeighborhoodSize() const { return neighborhoodSize; }
 
 
 protected:
 	/// Used to handle special cases which can produce errors (such as numbers below 1e-15)
 	enum {ERROR_FLAG = -1};
 
-	/// Quantize the magnitude values in an effort to suppress lows and boost highs
+
 	virtual void quantizeMagnitudes() = 0;
 
 	/// Process resultant saliency map to make it smooth and pretty
@@ -171,8 +158,6 @@ typedef SaliencyDetector::KernelDensityInfo KernelDensityInfo;
 class ImageSaliencyDetector : public SaliencyDetector {
 public:
 	ImageSaliencyDetector (const cv::Mat& src);
-
-	/// Destructor
 	~ImageSaliencyDetector();
 
 	/*!
@@ -182,44 +167,20 @@ public:
 	void compute();
 
 	/*!
-	 * Quantize the 2D magnitude values by suppressing lows and boosting highs
-	 */
-	void quantizeMagnitudes();
-
-	/*!
 	 * Perform class specific post-processing of the saliency map
 	 */
 	void performPostProcessing();
 
 
 public:
-	void setMagnitudes(const cv::Mat1f& other) {
-		magnitudes = other;
-	}
-
-	void setOrientations(const cv::Mat1f& other) {
-		orientations = other;
-	}
-
-	void setSourceImage(const cv::Mat1f& theSrc) {
-		srcImage = theSrc;
-	}
-
-	cv::Mat1f getMagnitudes() const {
-		return magnitudes;
-	}
-
-	cv::Mat1f getOrientations() const {
-		return orientations;
-	}
-
-	cv::Mat1f getSourceImage() const {
-		return srcImage;
-	}
-
-	cv::Mat1f getSaliencyMap() const {
-		return saliencyMap;
-	}
+	void setMagnitudes(const cv::Mat& other) { magnitudes = other; }
+    void setOrientations(const cv::Mat& other) { orientations = other; }
+	void setSourceImage(const cv::Mat& theSrc) { srcImage = theSrc; }
+	cv::Mat getMagnitudes() const { return magnitudes; }
+	cv::Mat getOrientations() const { return orientations; }
+	cv::Mat getSourceImage() const { return srcImage; }
+	// !!! saliency map is one channel
+	cv::Mat1f getSaliencyMap() const { return saliencyMap;}
 
 
 private:
@@ -245,7 +206,7 @@ private:
 	/*!
 	 * Updates the saliency map using the most recent density estimates
 	 */
-	void updateSaliencyMap();
+	void createSaliencyMap();
 
 	void sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelSum, int x, int y);
 
@@ -257,12 +218,15 @@ private:
 
 
 private:
-	cv::Mat1f magnitudes;
-	cv::Mat1f orientations;
-	cv::Mat1f srcImage;
+	// Pixel attributes
+	cv::Mat magnitudes;
+	cv::Mat orientations;
+
+	cv::Mat srcImage;	// Unspecified channels
 	cv::Mat1f saliencyMap;
 	std::vector< std::vector<KernelDensityInfo> > densityEstimates;
 
+	cv::Size inImageSize;	// At time submitted.
 };
 
 

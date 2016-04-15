@@ -15,6 +15,7 @@ libsaliency_la_SOURCES = \
 	Sampler.cpp Sampler.h \
 	SamplePool.cpp SamplePool.h \
 	Bounder.cpp Bounder.h \
+	Quantizer.cpp Quantizer.h \
     Samples.h 
 
 # Linker options libTestProgram

@@ -12,13 +12,14 @@
 #include "Smoother.h"
 // #include "Sampler.h"
 #include "SamplePool.h"
+#include "Quantizer.h"
 
 
 
 
 namespace sal {
 
-
+// Method of super class
 void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& sigma)
 {
 	Smoother smoother(sigma);
@@ -57,69 +58,26 @@ void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& si
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-/// ImageSaliencyDetector Methods
-//////////////////////////////////////////////////////////////////////////////////////////
+
+/// ImageSaliencyDetector subclass methods
 
 ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 	assert(!src.empty());
-	assert(src.channels() == 1);
+	assert(src.channels() >= 1);	// at least one channel, grayscale or more
 	setSourceImage(src);
 
-	densityEstimates.resize(srcImage.rows);
-	for (int i = 0; i < srcImage.rows; ++i) {
-		densityEstimates[i].resize(srcImage.cols);
+	inImageSize = srcImage.size();
+	printf("Input image size %i, %i\n", inImageSize.width, inImageSize.height);
+
+	// densityEstimate per pixel, not channel
+	densityEstimates.resize(inImageSize.height);
+	for (int i = 0; i < inImageSize.height; ++i) {
+		densityEstimates[i].resize(inImageSize.width);
 	}
 }
 
 
-ImageSaliencyDetector::~ImageSaliencyDetector() {
-
-}
-
-
-void ImageSaliencyDetector::quantizeMagnitudes() {
-	if (magnitudes.empty()) {
-		throw std::logic_error("ImageSaliencyDetector: There must be magnitudes info to process!");
-	}
-
-	int width = srcImage.cols;
-	int height = srcImage.rows;
-	float maxMag = FLT_MIN;
-
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (magnitudes(i, j) > maxMag) {
-				maxMag = magnitudes(i, j);
-			}
-		}
-	}
-
-	// Thresholds
-	float t1 = maxMag / 3.0f;
-	float t2 = maxMag / 2.0f;
-	float t3 = maxMag / 1.5f;
-
-	/*
-	 * This quantization differs from the original as a result of using OpenCV
-	 */
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (magnitudes(i, j) >= 0 && magnitudes(i, j) < t1) {
-				magnitudes(i, j) = 0.05 * maxMag;
-
-			} else if (magnitudes(i, j) >= t1 && magnitudes(i, j) < t2) {
-				magnitudes(i, j) = 0.25 * maxMag;
-
-			} else if (magnitudes(i, j) >= t2 && magnitudes(i, j) < t3) {
-				magnitudes(i, j) = 0.75 * maxMag;
-
-			} else if (magnitudes(i, j) >= t3){
-				magnitudes(i, j) = maxMag;
-			}
-		}
-	}
-}
+ImageSaliencyDetector::~ImageSaliencyDetector() { }
 
 
 KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samples) {
@@ -128,7 +86,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	assert(!orientations.empty());
 	assert(samples.size() == 4);
 
-	KernelDensityInfo kernelInfo;
+
 	int imgWidth = srcImage.cols, imgHeight = srcImage.rows;
 	float sampleDistance1 = 0.f, sampleAngle1 = 0.f, sampleMag1 = 0.f;
 	float sampleDistance2 = 0.f, sampleAngle2 = 0.f, sampleMag2 = 0.f;
@@ -147,29 +105,39 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	Location2D third  = samples[2];
 	Location2D fourth = samples[3];
 
+	// First attribute: euclidean distance between two pixels of a pair
+	// TODO would manhattan distance work?
 	sampleDistance1 = sqrt(pow((first.y - second.y), 2) + pow((first.x - second.x), 2));
 	sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
 
-
+	// Second attribute: difference in gradient direction between two pixels of a pair
+	// Here sqrt(pow(x)) is just getting absolute value
+	// TODO For each channel
 	sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
 	sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
 
+	// Weights:  difference in magnitudes
 	sampleMag1   = sqrt(pow(magnitudes(first.y, first.x) - magnitudes(second.y, second.x), 2));
 	sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
+	// TODO weights per channel?????
 
+	// Statistcal kernel is gaussian
+	// One per attribute (distance, orientation, ...)
+	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
+	angleKernel    = (1.f / aNorm) * exp((pow(sampleAngle1 - sampleAngle2, 2) / (-2.f * pow(angleBinWidth, 2))));
+	// TODO for other channels
+
+	// return results
+	KernelDensityInfo kernelInfo;
 	kernelInfo.firstWeight  = sampleMag1;
 	kernelInfo.secondWeight = sampleMag2;
 
-	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
-	angleKernel    = (1.f / aNorm) * exp((pow(sampleAngle1 - sampleAngle2, 2) / (-2.f * pow(angleBinWidth, 2))));
-
+	// TODO can't we assert that some or all of these are >=0?
 	if (sampleMag1 > 0 && sampleMag2 > 0 && distanceKernel > 0 && angleKernel > 0) {
 		kernelInfo.kernelSum = (sampleMag1 * sampleMag2 * distanceKernel * angleKernel);
 	} else {
 		kernelInfo.kernelSum = 0;
 	}
-
-
 	return kernelInfo;
 }
 
@@ -244,7 +212,7 @@ void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(const Kernel
 }
 
 
-void ImageSaliencyDetector::updateSaliencyMap() {
+void ImageSaliencyDetector::createSaliencyMap() {
 	int width = srcImage.cols;
 	int height = srcImage.rows;
 
@@ -324,7 +292,8 @@ void ImageSaliencyDetector::compute() {
 	setMagnitudes(gradienter.getGradMagnitudes());
 	setOrientations(gradienter.getGradOrientations());
 
-	quantizeMagnitudes();
+	Quantizer quantizer;
+	quantizer.quantizeMagnitudes(magnitudes);
 
 	std::cout << "Iterating on samples.\n";
 
@@ -364,7 +333,12 @@ void ImageSaliencyDetector::compute() {
 		//}
 	}
 
-	updateSaliencyMap();
+	createSaliencyMap();
+	// saliency map is same dimensions as src, but fewer channels
+	assert(saliencyMap.cols == inImageSize.width and saliencyMap.rows == inImageSize.height);
+	// saliency map is grayscale
+	assert(saliencyMap.channels()==1);
+	printf("Size %i, %i\n", saliencyMap.cols, saliencyMap.rows);
 	printf("Total(all threads) time iterating: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 }
 

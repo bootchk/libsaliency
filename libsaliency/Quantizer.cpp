@@ -1,0 +1,83 @@
+
+#include <opencv2/core/core.hpp>
+#include "Quantizer.h"
+
+namespace sal {
+
+// Quantize a single value
+void quantizeValue(float& value, float maxMag, cv::Vec3f thresholds) {
+	if (value >= 0 && value < thresholds[0]) {
+		value = 0.05 * maxMag;
+	} else if (value >= thresholds[0] && value < thresholds[1]) {
+		value = 0.25 * maxMag;
+	} else if (value >= thresholds[1] && value < thresholds[2]) {
+		value = 0.75 * maxMag;
+	} else if (value >= thresholds[2]){
+		value = maxMag;
+	}
+}
+
+void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
+	if (magnitudes.empty()) {
+		throw std::logic_error("ImageSaliencyDetector: There must be magnitudes info to process!");
+	}
+	// Quantize all channels
+	assert(magnitudes.channels() > 1);
+
+	int width = magnitudes.cols;
+	int height = magnitudes.rows;
+
+	// Allow up to four channels
+	cv::Vec4f maxMag = (FLT_MIN, FLT_MIN, FLT_MIN, FLT_MIN);
+
+	// Use pointer arithmetic into data.
+	// !!! cast
+	float *magnitudeData = (float*) magnitudes.data;
+	int stride = magnitudes.channels();
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			// float *magElement = magnitudeData[i * stride + j];
+			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+				float magValue = magnitudeData[i * stride + j + channel];
+				if (magValue > maxMag[channel]) {
+					maxMag[channel] = magValue;
+				}
+				//if (magnitudes.at<float>(i, j)[channel] > maxMag[channel]) {
+				//	maxMag[channel] = magnitudes.at<float>(i, j)[channel]);
+				//}
+			}
+		}
+	}
+
+	// Thresholds
+	// Each channel has its own thresholds
+	// Thresholds for a channel are function of maxMag for the channel.
+	std::vector<cv::Vec3f> thresholds;
+
+	for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+		thresholds[channel] =
+				cv::Vec3f(
+						maxMag[channel] / 3.0f,	// binning constants??
+						maxMag[channel] / 2.0f,
+						maxMag[channel] / 2.0f
+				);
+	}
+
+
+	// This differs from the original as a result of using OpenCV
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+				quantizeValue(
+						magnitudeData[i * stride + j + channel],	// pass by reference
+						maxMag[channel],
+						thresholds[channel]);
+			}
+		}
+	}
+};
+
+
+
+}

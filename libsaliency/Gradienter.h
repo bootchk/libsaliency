@@ -1,13 +1,17 @@
 
 #pragma once
 
-#include <opencv2/core/core.hpp>
-
 namespace sal {
 
 
 /*
 \brief Class to compute gradient: magnitude and direction.
+
+Hides implementation: now openCL, original used de novo implementations.
+
+Owns images it computes (magnitude and direction)
+
+Agnostic of channels: computes gradient for each
 
 Valid calling sequence:  compute ... getGradMagnitude
 */
@@ -16,22 +20,21 @@ public:
 	explicit Gradienter();
 	virtual ~Gradienter();
 
-	/// Perform Canny edge detection on the given image
-	void compute(const cv::Mat1f& src);
+	void compute(const cv::Mat& src);
 
-	cv::Mat1f getGradMagnitudes() const { return gradMagnitudes; }
-	cv::Mat1f getGradOrientations() const { return gradOrientations; }
+	cv::Mat getGradMagnitudes() const { return gradMagnitudes; }
+	cv::Mat getGradOrientations() const { return gradOrientations; }
 
 
 private:
 
-	void calculateXAndYDerivatives(const cv::Mat1f& smoothedImg, cv::Mat1f& deltaX, cv::Mat1f& deltaY);
-	void calculateGradientDirections(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY);
-	void calculateGradientMagnitudes(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY);
-	void calculateGradientDirectionsAndMagnitudes(const cv::Mat1f& deltaX, const cv::Mat1f& deltaY);
+	void calculateXAndYDerivatives(const cv::Mat& smoothedImg, cv::Mat& deltaX, cv::Mat& deltaY);
+	void calculateGradientDirections(const cv::Mat& deltaX, const cv::Mat& deltaY);
+	void calculateGradientMagnitudes(const cv::Mat& deltaX, const cv::Mat& deltaY);
+	void calculateGradientDirectionsAndMagnitudes(const cv::Mat& deltaX, const cv::Mat& deltaY);
 
-	cv::Mat1f gradMagnitudes;
-	cv::Mat1f gradOrientations;	// sic direction
+	cv::Mat gradMagnitudes;
+	cv::Mat gradOrientations;	// sic direction
 };
 
 } // namespace

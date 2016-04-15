@@ -8,8 +8,7 @@
 
 namespace sal {
 
-// Class to hide implementation of smooth or blur.
-// Now adapts to openCL, original used de novo implementations.
+
 
 Smoother::Smoother(const float& sig) {
 	if (sig > 0) {
@@ -25,7 +24,7 @@ Smoother::Smoother(const float& sig) {
 Smoother::~Smoother() { }
 
 
-void Smoother::smoothImage(const cv::Mat1f& src, cv::Mat1f& smoothedImg) {
+void Smoother::smoothImage(const cv::Mat& src, cv::Mat& smoothedImg) {
 	assert(!src.empty() && src.cols >= 3 && src.rows >= 3);
 
 	if (!smoothedImg.empty()) {
