@@ -133,9 +133,6 @@ protected:
 	/// Used to handle special cases which can produce errors (such as numbers below 1e-15)
 	enum {ERROR_FLAG = -1};
 
-
-	virtual void quantizeMagnitudes() = 0;
-
 	/// Process resultant saliency map to make it smooth and pretty
 	void postProcessSaliencyMap(cv::Mat1f& salMap, const float& sigma = 18.0f);
 

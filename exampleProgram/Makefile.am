@@ -27,4 +27,4 @@ exampleProgram_LDADD = $(top_srcdir)/libsaliency/libsaliency.la -lopencv_core -l
 exampleProgram_LDFLAGS = -rpath `cd $(top_srcdir);pwd`/libsaliency/.libs
 
 # Compiler options for a.out
-exampleProgram_CPPFLAGS = -I$(top_srcdir)/include
+exampleProgram_CPPFLAGS = -I$(top_srcdir)/include -std=c++11

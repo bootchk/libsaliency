@@ -17,6 +17,11 @@ void quantizeValue(float& value, float maxMag, cv::Vec3f thresholds) {
 	}
 }
 
+// Quantizer does not own any data
+Quantizer::Quantizer() {};
+Quantizer::~Quantizer() {};
+
+
 void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	if (magnitudes.empty()) {
 		throw std::logic_error("ImageSaliencyDetector: There must be magnitudes info to process!");

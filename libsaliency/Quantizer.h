@@ -8,8 +8,8 @@ Suppressing lows and boosting highs
 */
 class Quantizer {
 public:
-	explicit Quantizer();
-	virtual ~Quantizer();
+	Quantizer();
+	~Quantizer();
 
 	void quantizeMagnitudes(const cv::Mat& magnitudes);
 };
