@@ -5,6 +5,7 @@
 #include <cassert>
 #include <ctime>
 #include <cmath>
+#include <array>
 
 #include "Bounder.h"
 #include "libsaliency.hpp"

@@ -23,5 +23,5 @@ libsaliency_la_LDFLAGS =
 
 # Compiler options. Here we are adding the include directory
 # to be searched for headers included in the source code.
-libsaliency_la_CPPFLAGS = -I$(top_srcdir)/include
+libsaliency_la_CPPFLAGS = -I$(top_srcdir)/include -std=c++11
 

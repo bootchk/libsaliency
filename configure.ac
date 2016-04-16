@@ -11,7 +11,8 @@ AC_CONFIG_MACRO_DIR([m4])
 dnl Initialize automake
 AM_INIT_AUTOMAKE
 
-dnl this allows us specify individual liking flags for each target
+dnl lkk Lets us specify individual linking flags for each target??
+dnl supposedly obsolescent?
 AM_PROG_CC_C_O 
 
 dnl Initialize Libtool
