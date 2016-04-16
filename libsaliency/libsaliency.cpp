@@ -108,17 +108,22 @@ void calculateChannelAttributes(
 	int firstPixelAddress = first.y * (magnitudes.cols * stride) + (first.x * stride);
 	int secondPixelAddress = second.y * (magnitudes.cols * stride) + (second.x * stride);
 
+	// To use address arithmetic, indexed pointer must be of proper type
+	// i.e. compiler multiplies by sizeof(type)
+	float* magnitudeData = (float*) magnitudes.data;
+	float* orientationData = (float*) orientations.data;
+
 	for(int channel=0; channel<magnitudes.channels(); channel++ ) {
 		// TODO abs instead of sqrt(pow()
-		float unsignedValue =
-				magnitudes.data[firstPixelAddress + channel] -
-				magnitudes.data[secondPixelAddress + channel] ;
-		attributes[channel].weight = sqrt(pow(unsignedValue, 2));
+		float signedValue =
+				magnitudeData[firstPixelAddress + channel] -
+				magnitudeData[secondPixelAddress + channel] ;
+		attributes[channel].weight = sqrt(pow(signedValue, 2));
 
-		unsignedValue =
-				orientations.data[firstPixelAddress + channel] -
-				orientations.data[secondPixelAddress + channel] ;
-		attributes[channel].angle = sqrt(pow(unsignedValue, 2));
+		signedValue =
+				orientationData[firstPixelAddress + channel] -
+				orientationData[secondPixelAddress + channel] ;
+		attributes[channel].angle = sqrt(pow(signedValue, 2));
 	};
 	// Assert attributes has angle,weight for each channel
 }
@@ -157,7 +162,6 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
 
 	// Second attribute: difference in gradient direction between two pixels of a pair
-	// Here sqrt(pow(x)) is just getting absolute value
 	// TODO For each channel
 	AttributeVector firstPairAttributes;
 	AttributeVector secondPairAttributes;
@@ -165,6 +169,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	calculateChannelAttributes( first, second, orientations, magnitudes, firstPairAttributes);
 	calculateChannelAttributes( third, fourth, orientations, magnitudes, secondPairAttributes);
 
+	// !!! y first when addressing Mat using () or at()
 	//sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
 	//sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
 
@@ -179,6 +184,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels
+	// For now, only using channel 0 (say Green.)
 	float angleDifference = firstPairAttributes[0].angle - secondPairAttributes[0].angle;
 	angleKernel = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
 

@@ -49,8 +49,11 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	for (int row = 0; row < height; row++) {
 		for (int col = 0; col < width; col++) {
 			// row * rowLength + col * elementLength
+			// step is count of bytes in a row
+			assert(stride * magnitudes.cols == magnitudes.step / sizeof(float));	// row length
 			int pixelAddress = row * (stride * magnitudes.cols) + col * stride;
 			for(int channel=0; channel<magnitudes.channels(); channel++ ) {
+				// non-compiling attempt:  float magValue = CV_MAT_ELEM(magnitudes, float, col, row*stride + channel);
 				float magValue = magnitudeData[pixelAddress + channel];
 				if (magValue > channelMaxMagnitudes[channel]) {
 					channelMaxMagnitudes[channel] = magValue;
