@@ -79,6 +79,48 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 
 ImageSaliencyDetector::~ImageSaliencyDetector() { }
 
+// Each channel has this attribute
+struct Attribute {
+	float angle;
+	float weight;
+};
+
+// Short container of attributes, one per channel (e.g. color)
+// OpenCV requires def of inner datatype, i.e. custom type.....   typedef cv::Vec<Attribute, 4>  AttributeVector;
+// std::array requires C++11
+typedef std::array<Attribute, 4> AttributeVector;
+
+
+// For given pair of pixels, calculate weightedAttributes for each channel (pixelel)
+// TODO Do channels in parallel (vector operation )
+void calculateChannelAttributes(
+		Location2D first,
+		Location2D second,
+		cv::Mat& orientations,
+		cv::Mat magnitudes,
+		AttributeVector& attributes
+		)
+{
+	// address arithmetic
+	int stride = magnitudes.channels();
+	int firstPixelAddress = first.y * (magnitudes.cols * stride) + (first.x * stride);
+	int secondPixelAddress = second.y * (magnitudes.cols * stride) + (second.x * stride);
+
+	for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+		// TODO abs instead of sqrt(pow()
+		float unsignedValue =
+				magnitudes.data[firstPixelAddress + channel] -
+				magnitudes.data[secondPixelAddress + channel] ;
+		attributes[channel].weight = sqrt(pow(unsignedValue, 2));
+
+		unsignedValue =
+				orientations.data[firstPixelAddress + channel] -
+				orientations.data[secondPixelAddress + channel] ;
+		attributes[channel].angle = sqrt(pow(unsignedValue, 2));
+	};
+}
+
+
 
 KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samples) {
 	assert(!srcImage.empty());
@@ -86,11 +128,11 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	assert(!orientations.empty());
 	assert(samples.size() == 4);
 
-
 	int imgWidth = srcImage.cols, imgHeight = srcImage.rows;
-	float sampleDistance1 = 0.f, sampleAngle1 = 0.f, sampleMag1 = 0.f;
-	float sampleDistance2 = 0.f, sampleAngle2 = 0.f, sampleMag2 = 0.f;
+	float sampleDistance1 = 0.f;
+	float sampleDistance2 = 0.f;
 	float distanceKernel = 0.f, angleKernel = 0.f;
+
 	float binDimension = 10.f;
 	float distanceBinWidth = sqrt(pow(imgWidth, 2) + pow(imgHeight, 2)) / binDimension;
 	float angleBinWidth = 3.14159265358979323846 / binDimension;
@@ -113,28 +155,40 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	// Second attribute: difference in gradient direction between two pixels of a pair
 	// Here sqrt(pow(x)) is just getting absolute value
 	// TODO For each channel
-	sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
-	sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
+	AttributeVector firstPairAttributes;
+	AttributeVector secondPairAttributes;
+
+	calculateChannelAttributes( first, second, orientations, magnitudes, firstPairAttributes);
+	calculateChannelAttributes( third, fourth, orientations, magnitudes, secondPairAttributes);
+
+	//sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
+	//sampleAngle2 = sqrt(pow(orientations(third.y, third.x) - orientations(fourth.y, fourth.x), 2));
 
 	// Weights:  difference in magnitudes
-	sampleMag1   = sqrt(pow(magnitudes(first.y, first.x) - magnitudes(second.y, second.x), 2));
-	sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
+	//sampleMag1   = sqrt(pow(magnitudes(first.y, first.x) - magnitudes(second.y, second.x), 2));
+	//sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
 	// TODO weights per channel?????
 
-	// Statistcal kernel is gaussian
-	// One per attribute (distance, orientation, ...)
+	// Statistical kernel is gaussian
+	// One attribute is distance between samples
 	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
-	angleKernel    = (1.f / aNorm) * exp((pow(sampleAngle1 - sampleAngle2, 2) / (-2.f * pow(angleBinWidth, 2))));
+
+	// One per channel, difference between angle attribute
 	// TODO for other channels
+	float angleDifference = firstPairAttributes[0].angle = secondPairAttributes[0].angle;
+	angleKernel = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
 
 	// return results
 	KernelDensityInfo kernelInfo;
-	kernelInfo.firstWeight  = sampleMag1;
-	kernelInfo.secondWeight = sampleMag2;
+
+	kernelInfo.firstWeight  = firstPairAttributes[0].weight;
+	kernelInfo.secondWeight = secondPairAttributes[0].weight;
+
+	float productOfWeights = firstPairAttributes[0].weight * secondPairAttributes[0].weight;
 
 	// TODO can't we assert that some or all of these are >=0?
-	if (sampleMag1 > 0 && sampleMag2 > 0 && distanceKernel > 0 && angleKernel > 0) {
-		kernelInfo.kernelSum = (sampleMag1 * sampleMag2 * distanceKernel * angleKernel);
+	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 && angleKernel > 0) {
+		kernelInfo.kernelSum = (productOfWeights * distanceKernel * angleKernel);
 	} else {
 		kernelInfo.kernelSum = 0;
 	}

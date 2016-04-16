@@ -35,17 +35,19 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	float *magnitudeData = (float*) magnitudes.data;
 	int stride = magnitudes.channels();
 
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			// float *magElement = magnitudeData[i * stride + j];
+	// Iterate over channels in data
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
+			// float *magElement = magnitudeData[row * stride + col];
+			int pixelAddress = row * (stride * magnitudes.cols) + col * stride;
 			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
-				float magValue = magnitudeData[i * stride + j + channel];
+				float magValue = magnitudeData[pixelAddress + channel];
 				if (magValue > maxMag[channel]) {
 					maxMag[channel] = magValue;
 				}
-				//if (magnitudes.at<float>(i, j)[channel] > maxMag[channel]) {
+				// Equivalent without address arithmetic, but slower:
+				// if (magnitudes.at<float>(i, j)[channel] > maxMag[channel]) {
 				//	maxMag[channel] = magnitudes.at<float>(i, j)[channel]);
-				//}
 			}
 		}
 	}
@@ -66,11 +68,11 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 
 
 	// This differs from the original as a result of using OpenCV
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
 			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
 				quantizeValue(
-						magnitudeData[i * stride + j + channel],	// pass by reference
+						magnitudeData[row * stride + col + channel],	// pass by reference
 						maxMag[channel],
 						thresholds[channel]);
 			}
