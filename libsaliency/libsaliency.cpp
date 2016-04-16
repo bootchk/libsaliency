@@ -104,10 +104,11 @@ void calculateChannelAttributes(
 {
 	// address arithmetic
 	int stride = magnitudes.channels();
+	// row * rowLength + col * stride i.e. elementLength
 	int firstPixelAddress = first.y * (magnitudes.cols * stride) + (first.x * stride);
 	int secondPixelAddress = second.y * (magnitudes.cols * stride) + (second.x * stride);
 
-	for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+	for(int channel=0; channel<magnitudes.channels(); channel++ ) {
 		// TODO abs instead of sqrt(pow()
 		float unsignedValue =
 				magnitudes.data[firstPixelAddress + channel] -
@@ -175,7 +176,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
 
 	// One per channel, difference between angle attribute
-	// TODO for other channels
+	// TODO kernels for other channels
 	float angleDifference = firstPairAttributes[0].angle = secondPairAttributes[0].angle;
 	angleKernel = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
 
@@ -185,10 +186,12 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	kernelInfo.firstWeight  = firstPairAttributes[0].weight;
 	kernelInfo.secondWeight = secondPairAttributes[0].weight;
 
+	// TODO
 	float productOfWeights = firstPairAttributes[0].weight * secondPairAttributes[0].weight;
 
 	// TODO can't we assert that some or all of these are >=0?
 	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 && angleKernel > 0) {
+		// TODO more kernels
 		kernelInfo.kernelSum = (productOfWeights * distanceKernel * angleKernel);
 	} else {
 		kernelInfo.kernelSum = 0;
@@ -391,8 +394,7 @@ void ImageSaliencyDetector::compute() {
 	createSaliencyMap();
 	// saliency map is same dimensions as src, but fewer channels
 	assert(saliencyMap.cols == inImageSize.width and saliencyMap.rows == inImageSize.height);
-	// saliency map is grayscale
-	assert(saliencyMap.channels()==1);
+	assert(saliencyMap.channels()==1);	// saliency map is grayscale
 	printf("Size %i, %i\n", saliencyMap.cols, saliencyMap.rows);
 	printf("Total(all threads) time iterating: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 }

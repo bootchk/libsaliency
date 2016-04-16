@@ -31,6 +31,7 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	}
 	// Quantize all channels
 	assert(magnitudes.channels() > 1);
+	// TODO symbolic constant for MAX_SUPPORTED_CHANNELS = 4
 	assert(magnitudes.channels() < 5); 	// Allow for future RGBAlpha or RGBDepth
 
 	int width = magnitudes.cols;
@@ -47,9 +48,9 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	// Iterate over channels in data
 	for (int row = 0; row < height; row++) {
 		for (int col = 0; col < width; col++) {
-			// float *magElement = magnitudeData[row * stride + col];
+			// row * rowLength + col * elementLength
 			int pixelAddress = row * (stride * magnitudes.cols) + col * stride;
-			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+			for(int channel=0; channel<magnitudes.channels(); channel++ ) {
 				float magValue = magnitudeData[pixelAddress + channel];
 				if (magValue > channelMaxMagnitudes[channel]) {
 					channelMaxMagnitudes[channel] = magValue;
@@ -62,7 +63,7 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	}
 
 	std::cout << "Thresholds...\n";
-	for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+	for(int channel=0; channel<magnitudes.channels(); channel++ ) {
 		thresholds[channel] =
 				cv::Vec3f(
 						channelMaxMagnitudes[channel] / 3.0f,	// binning constants??
@@ -76,7 +77,7 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	for (int row = 0; row < height; row++) {
 		for (int col = 0; col < width; col++) {
 			int pixelAddress = row * (stride * magnitudes.cols) + col * stride;
-			for(int channel=0; channel<magnitudes.depth(); channel++ ) {
+			for(int channel=0; channel<magnitudes.channels(); channel++ ) {
 				quantizeValue(
 						magnitudeData[pixelAddress + channel],	// pass by reference
 						channelMaxMagnitudes[channel],
