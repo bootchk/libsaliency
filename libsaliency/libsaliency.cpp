@@ -120,6 +120,7 @@ void calculateChannelAttributes(
 				orientations.data[secondPixelAddress + channel] ;
 		attributes[channel].angle = sqrt(pow(unsignedValue, 2));
 	};
+	// Assert attributes has angle,weight for each channel
 }
 
 
@@ -135,6 +136,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	float sampleDistance2 = 0.f;
 	float distanceKernel = 0.f, angleKernel = 0.f;
 
+	// Document magic numbers
 	float binDimension = 10.f;
 	float distanceBinWidth = sqrt(pow(imgWidth, 2) + pow(imgHeight, 2)) / binDimension;
 	float angleBinWidth = 3.14159265358979323846 / binDimension;
@@ -177,7 +179,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels
-	float angleDifference = firstPairAttributes[0].angle = secondPairAttributes[0].angle;
+	float angleDifference = firstPairAttributes[0].angle - secondPairAttributes[0].angle;
 	angleKernel = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
 
 	// return results
