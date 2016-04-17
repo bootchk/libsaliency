@@ -124,6 +124,7 @@ void ImageSaliencyDetector:: calculateChannelAttributes(
 
 std::array<float, 3> kernelChannels;
 
+// For given sample (two pair_, calculate kernel result (gaussian function of gradient angle differences)
 void ImageSaliencyDetector:: calculateKernelsForChannels(
 		AttributeVector& firstPairAttributes,
 		AttributeVector& secondPairAttributes,
@@ -134,6 +135,7 @@ void ImageSaliencyDetector:: calculateKernelsForChannels(
 		float angleDifference = firstPairAttributes[channel].angle - secondPairAttributes[channel].angle;
 		kernelChannels[channel] = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
 	}
+	// assert kernelChannels holds kernel value for each channel
 }
 
 
@@ -201,12 +203,14 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 
 	// post results
 
+	// Put weights into result
 	for(int channel = 0; channel<magnitudes.channels(); channel++) {
 		kernelInfo.weights[0][channel]  = firstPairAttributes[channel].weight;	// first sample pair
-		kernelInfo.weights[1][channel]  = firstPairAttributes[channel].weight;
+		kernelInfo.weights[1][channel]  = secondPairAttributes[channel].weight;
 		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
 	}
 
+	// Product of angle kernels
 	float productOfKernelChannels = kernelChannels[0] * kernelChannels[1] * kernelChannels[2];
 
 	// TODO can't we assert that some or all of these are >=0?
