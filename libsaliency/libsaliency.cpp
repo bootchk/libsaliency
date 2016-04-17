@@ -18,6 +18,8 @@
 
 
 
+
+
 namespace sal {
 
 // Method of super class
@@ -75,30 +77,21 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 	for (int i = 0; i < inImageSize.height; ++i) {
 		densityEstimates[i].resize(inImageSize.width);
 	}
+	// assert densityEstimates size equals inImageSize, and elements are initialized KernelDensityInfo
+	// (that is what std::vector.resize() does.)
 }
 
 
 ImageSaliencyDetector::~ImageSaliencyDetector() { }
 
-// Each channel has this attribute
-struct Attribute {
-	float angle;
-	float weight;
-};
 
-// Short container of attributes, one per channel (e.g. color)
-// OpenCV requires def of inner datatype, i.e. custom type.....   typedef cv::Vec<Attribute, 4>  AttributeVector;
-// std::array requires C++11
-typedef std::array<Attribute, 4> AttributeVector;
 
 
 // For given pair of pixels, calculate weightedAttributes for each channel (pixelel)
 // TODO Do channels in parallel (vector operation )
-void calculateChannelAttributes(
+void ImageSaliencyDetector:: calculateChannelAttributes(
 		Location2D first,
 		Location2D second,
-		cv::Mat& orientations,
-		cv::Mat magnitudes,
 		AttributeVector& attributes
 		)
 {
@@ -166,8 +159,8 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	AttributeVector firstPairAttributes;
 	AttributeVector secondPairAttributes;
 
-	calculateChannelAttributes( first, second, orientations, magnitudes, firstPairAttributes);
-	calculateChannelAttributes( third, fourth, orientations, magnitudes, secondPairAttributes);
+	calculateChannelAttributes( first, second, firstPairAttributes);
+	calculateChannelAttributes( third, fourth, secondPairAttributes);
 
 	// !!! y first when addressing Mat using () or at()
 	//sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
@@ -240,8 +233,10 @@ void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
 
 
 void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum) {
+	// Require initialized densityEstimates
 	assert(!densityEstimates.empty());
 	assert(!densityEstimates[0].empty());
+	assert(densityEstimates[0][0].sampleCount >= 0);
 
 	int sampleCountLimit = (2 * neighborhoodSize - 1) * (2 * neighborhoodSize - 1);
 	int width = srcImage.cols;
@@ -253,9 +248,12 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 	// Also assert bounding rect is square of dimension neighborhoodSize
 
 	// Iterate over coordinates of aligned bounding rect
-	for (int i = bounds.y; i <= bounds.y + bounds.height; i++) {
-		//for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
-		for (int j = bounds.x; j <= bounds.x + bounds.width; j++) {
+	for (int i = bounds.y; i < bounds.y + bounds.height; i++) {
+		//Original: for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
+		for (int j = bounds.x; j < bounds.x + bounds.width; j++) {
+			// Assert coords are strictly in range
+			// C++ array access using [] operator does not check.
+			assert (i < inImageSize.height and j < inImageSize.width);
 			if (densityEstimates[i][j].sampleCount < sampleCountLimit) {
 				sumKernelResultToDensityEstimate(kernelSum, i, j);
 

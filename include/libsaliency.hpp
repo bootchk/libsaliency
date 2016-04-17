@@ -44,13 +44,10 @@ namespace sal
 
 
 /**
- * \brief Abstract class for saliency mechanisms following the theory
- * found in the paper "Relational Entropy-Based Saliency Detection in Images and Video"
+ * \brief
+ * Abstract class for saliency algorithm, as described in:
+ * "Relational Entropy-Based Saliency Detection in Images and Video"
  * by Kester Duncan and Sudeep Sarkar in IEEE International Conference on Image Processing (2012)
- *
- * For details on the algorithm, the interested reader is advised to read
- * the article, found here:
- *
  * http://www.cse.usf.edu/~kkduncan/research/DuncanICIP2012.pdf
  *
  */
@@ -61,8 +58,8 @@ public:
 	 * for performing iterative kernel density estimation for local
 	 * pixel neighborhoods.
 	 *
-	 * Therefore, for each pixel, this information is calculated and
-	 * stored. See Section 3 of the aforementioned paper for details.
+	 * For each pixel, this is iteratively calculated and summed.
+	 *  See Section 3 of the aforementioned paper for details.
 	 */
 	struct KernelDensityInfo {
 		/// Constructor
@@ -71,9 +68,7 @@ public:
 			entropy(0.f),
 			firstWeight(0.f),
 			secondWeight(0.f),
-			sampleCount(0) {
-
-		}
+			sampleCount(0) {}
 
 		/// Copy constructor
 		KernelDensityInfo(const KernelDensityInfo& other) {
@@ -181,6 +176,23 @@ public:
 
 
 private:
+
+	struct PixelelAttribute {
+		float angle;
+		float weight;
+	};
+
+	// Short container of attributes, one per channel (e.g. color)
+	// OpenCV requires def of inner datatype, i.e. custom type.....   typedef cv::Vec<Attribute, 4>  AttributeVector;
+	// std::array requires C++11
+	typedef std::array<PixelelAttribute, 4> AttributeVector;
+
+	void calculateChannelAttributes(
+			Location2D first,
+			Location2D second,
+			AttributeVector& attributes
+			);
+
 	/*!
 	 * Calculate the intermediate kernel sum from the contribution of the
 	 * pixels given by samples
@@ -220,7 +232,7 @@ private:
 	cv::Mat orientations;
 
 	cv::Mat srcImage;	// Unspecified channels
-	cv::Mat1f saliencyMap;
+	cv::Mat1f saliencyMap;	// Grayscale
 	std::vector< std::vector<KernelDensityInfo> > densityEstimates;
 
 	cv::Size inImageSize;	// At time submitted.
