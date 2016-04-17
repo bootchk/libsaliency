@@ -1,3 +1,4 @@
+
 #include <cstdlib>
 #include <iostream>
 #include <cstdio>
@@ -7,16 +8,14 @@
 #include <cmath>
 #include <array>
 
+
 #include "Bounder.h"
 #include "libsaliency.hpp"
 #include "Gradienter.h"
 #include "Smoother.h"
-// #include "Sampler.h"
+// #include "Sampler.h"	// Original alternative to SamplePool
 #include "SamplePool.h"
 #include "Quantizer.h"
-
-
-
 
 
 
@@ -34,21 +33,20 @@ void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& si
 
 	smoother.smoothImage(salMap, filteredMap);
 	filteredMap.copyTo(salMap);
-
-	/*
-	 * Smoothing another time effectively gets rid of
-	 * unsightly rings caused by the Gaussian
-	 */
 	filteredMap.release();
+
+	// Smoothing twice effectively gets rid of unsightly rings caused by the Gaussian
 	smoother.setSigma(0.6f * sigma);
 	smoother.smoothImage(salMap, filteredMap);
-	filteredMap.copyTo(salMap);
 
-	//  Normalization
+	// Normalize, overwriting salMap
 	// lkk alternative to commented out
 	cv::normalize(filteredMap, salMap, 0, 255, cv::NORM_MINMAX);
+	filteredMap.release();
 
 	/*
+	 * This is the original code.
+	filteredMap.copyTo(salMap);
 	double maxVal = 0, minVal = 0;
 	cv::minMaxLoc(salMap, &minVal, &maxVal);
 
@@ -74,11 +72,13 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 
 	// densityEstimate per pixel, not channel
 	densityEstimates.resize(inImageSize.height);
-	for (int i = 0; i < inImageSize.height; ++i) {
-		densityEstimates[i].resize(inImageSize.width);
+	for (int row = 0; row < inImageSize.height; ++row) {
+		densityEstimates[row].resize(inImageSize.width);
 	}
 	// assert densityEstimates size equals inImageSize, and elements are initialized KernelDensityInfo
 	// (that is what std::vector.resize() does.)
+
+	// !!! column major order, i.e.  [row][col] addressing
 }
 
 
@@ -122,8 +122,21 @@ void ImageSaliencyDetector:: calculateChannelAttributes(
 }
 
 
+std::array<float, 3> kernelChannels;
 
-KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samples) {
+void ImageSaliencyDetector:: calculateKernelsForChannels(
+		AttributeVector& firstPairAttributes,
+		AttributeVector& secondPairAttributes,
+		float aNorm,
+		float angleBinWidth)
+{
+	for (int channel=0; channel<magnitudes.channels(); channel++) {
+		float angleDifference = firstPairAttributes[channel].angle - secondPairAttributes[channel].angle;
+		kernelChannels[channel] = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
+	}
+}
+
+void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDensityInfo& kernelInfo) {
 	assert(!srcImage.empty());
 	assert(!magnitudes.empty());
 	assert(!orientations.empty());
@@ -154,8 +167,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	sampleDistance1 = sqrt(pow((first.y - second.y), 2) + pow((first.x - second.x), 2));
 	sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
 
-	// Second attribute: difference in gradient direction between two pixels of a pair
-	// TODO For each channel
+	// Further attributes: difference in gradient direction between in pixelel (channel) of two pixels of a pair
 	AttributeVector firstPairAttributes;
 	AttributeVector secondPairAttributes;
 
@@ -178,26 +190,34 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels
 	// For now, only using channel 0 (say Green.)
-	float angleDifference = firstPairAttributes[0].angle - secondPairAttributes[0].angle;
-	angleKernel = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
+	calculateKernelsForChannels(
+			firstPairAttributes,
+			secondPairAttributes,
+			aNorm,
+			angleBinWidth);
+	angleKernel = kernelChannels[0];
 
-	// return results
-	KernelDensityInfo kernelInfo;
+	// post results
+	//KernelDensityInfo kernelInfo;
 
 	kernelInfo.firstWeight  = firstPairAttributes[0].weight;
 	kernelInfo.secondWeight = secondPairAttributes[0].weight;
 
 	// TODO
-	float productOfWeights = firstPairAttributes[0].weight * secondPairAttributes[0].weight;
+	float productOfWeights = firstPairAttributes[0].weight * secondPairAttributes[0].weight
+			* firstPairAttributes[1].weight * secondPairAttributes[1].weight
+			* firstPairAttributes[2].weight * secondPairAttributes[2].weight;
+	float productOfKernelChannels = kernelChannels[0] * kernelChannels[1] * kernelChannels[2];
 
 	// TODO can't we assert that some or all of these are >=0?
+	// TODO check all angleKernels > 0
 	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 && angleKernel > 0) {
 		// TODO more kernels
-		kernelInfo.kernelSum = (productOfWeights * distanceKernel * angleKernel);
+		kernelInfo.kernelSum = (productOfWeights * distanceKernel * productOfKernelChannels); // angleKernel);
 	} else {
 		kernelInfo.kernelSum = 0;
 	}
-	return kernelInfo;
+	//return kernelInfo;
 }
 
 
@@ -206,6 +226,7 @@ KernelDensityInfo ImageSaliencyDetector::calculateKernelSum(const TSamples& samp
 
 void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
 	if (kernelInfo.sampleCount > 0) {
+		// TODO all weights
 		float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;
 		float estimation = 0.f;
 
@@ -248,18 +269,18 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 	// Also assert bounding rect is square of dimension neighborhoodSize
 
 	// Iterate over coordinates of aligned bounding rect
-	for (int i = bounds.y; i < bounds.y + bounds.height; i++) {
+	for (int row = bounds.y; row < bounds.y + bounds.height; row++) {
 		//Original: for (int j = bounds.topLeft.x; j <= bounds.topRight.x; j++) {
-		for (int j = bounds.x; j < bounds.x + bounds.width; j++) {
+		for (int col = bounds.x; col < bounds.x + bounds.width; col++) {
 			// Assert coords are strictly in range
 			// C++ array access using [] operator does not check.
-			assert (i < inImageSize.height and j < inImageSize.width);
-			if (densityEstimates[i][j].sampleCount < sampleCountLimit) {
-				sumKernelResultToDensityEstimate(kernelSum, i, j);
+			assert (row < inImageSize.height and col < inImageSize.width);
+			if (densityEstimates[row][col].sampleCount < sampleCountLimit) {
+				sumKernelResultToDensityEstimate(kernelSum, row, col);
 
 				// Update the pixel entropy every N (= 32) iterations
-				if (((densityEstimates[i][j].sampleCount + 1) % 32) == 0) {
-					updatePixelEntropy(densityEstimates[i][j]);
+				if (((densityEstimates[row][col].sampleCount + 1) % 32) == 0) {
+					updatePixelEntropy(densityEstimates[row][col]);
 				}
 			}
 		}
@@ -267,12 +288,12 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 }
 
 
-void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelResult, int x, int y)
+void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelResult, int row, int col)
 {
-	densityEstimates[x][y].kernelSum += kernelResult.kernelSum;
-	densityEstimates[x][y].firstWeight += kernelResult.firstWeight;
-	densityEstimates[x][y].secondWeight += kernelResult.secondWeight;
-	densityEstimates[x][y].sampleCount++;
+	densityEstimates[row][col].kernelSum += kernelResult.kernelSum;
+	densityEstimates[row][col].firstWeight += kernelResult.firstWeight;
+	densityEstimates[row][col].secondWeight += kernelResult.secondWeight;
+	densityEstimates[row][col].sampleCount++;
 }
 
 
@@ -287,10 +308,10 @@ void ImageSaliencyDetector::createSaliencyMap() {
 	float maxEntropy = -999;
 	float minEntropy = 999;
 
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (densityEstimates[i][j].entropy > maxEntropy) {
-				maxEntropy = densityEstimates[i][j].entropy;
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
+			if (densityEstimates[row][col].entropy > maxEntropy) {
+				maxEntropy = densityEstimates[row][col].entropy;
 			}
 		}
 	}
@@ -302,37 +323,43 @@ void ImageSaliencyDetector::createSaliencyMap() {
 	 *
 	 * We find the minimum entropy in tandem
 	 */
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (densityEstimates[i][j].entropy == ERROR_FLAG) {
-				densityEstimates[i][j].entropy = maxEntropy;
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
+			if (densityEstimates[row][col].entropy == ERROR_FLAG) {
+				densityEstimates[row][col].entropy = maxEntropy;
 			}
 
-			if (densityEstimates[i][j].entropy < minEntropy) {
-				minEntropy = densityEstimates[i][j].entropy;
+			if (densityEstimates[row][col].entropy < minEntropy) {
+				minEntropy = densityEstimates[row][col].entropy;
 			}
 		}
 	}
 
 	// Shift values so that the minimum entropy value is 0
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			densityEstimates[i][j].entropy -= minEntropy;
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
+			densityEstimates[row][col].entropy -= minEntropy;
 		}
 	}
 
 	// Also adjust the maximum entropy
-	 maxEntropy -= minEntropy;
+	maxEntropy -= minEntropy;
 
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
+	// Fill saliencyMap (while adjusting maximum entropy)
+	// Note disconnect between loop nesting: for densityEstimate: column major, for saliencyMap row major
+	// i.e. this is inefficient for saliencyMap, but efficiency probably not important
+	// since only done once
+
+	for (int row = 0; row < height; row++) {
+		for (int col = 0; col < width; col++) {
 			if (maxEntropy > 0) {
-				saliencyMap(i, j) = (255.0 - ((densityEstimates[i][j].entropy / maxEntropy) * 255.0));
+				saliencyMap(row, col) = (255.0 - ((densityEstimates[row][col].entropy / maxEntropy) * 255.0));
 			} else {
-				saliencyMap(i, j) = 0;
+				saliencyMap(row, col) = 0;
 			}
 		}
 	}
+	// assert saliencyMap is created and filled
 }
 
 
@@ -390,7 +417,7 @@ void ImageSaliencyDetector::compute() {
 		// which seemed to update with a zero kernelSum when sample not in bounds
 		// and also counted that sample.
 		// if (sampler.isSampleInImageBounds(samples)) {
-			kernelSum = calculateKernelSum(samples);
+			calculateKernelSum(samples, kernelSum);
 			bounds = bounder.getApplicableBounds(samples);
 			updateApplicableRegion(bounds, kernelSum);
 			++counter;

@@ -53,63 +53,9 @@ namespace sal
  */
 class SaliencyDetector {
 public:
-	/*!
-	 * Information structure to store the information required
-	 * for performing iterative kernel density estimation for local
-	 * pixel neighborhoods.
-	 *
-	 * For each pixel, this is iteratively calculated and summed.
-	 *  See Section 3 of the aforementioned paper for details.
-	 */
-	struct KernelDensityInfo {
-		/// Constructor
-		KernelDensityInfo() :
-			kernelSum(0.f),
-			entropy(0.f),
-			firstWeight(0.f),
-			secondWeight(0.f),
-			sampleCount(0) {}
-
-		/// Copy constructor
-		KernelDensityInfo(const KernelDensityInfo& other) {
-			this->kernelSum = other.kernelSum;
-			this->entropy = other.entropy;
-			this->firstWeight = other.firstWeight;
-			this->secondWeight = other.secondWeight;
-			this->sampleCount = other.sampleCount;
-		}
-
-		/// Assignment operator
-		KernelDensityInfo& operator=(const KernelDensityInfo& other) {
-			this->kernelSum = other.kernelSum;
-			this->entropy = other.entropy;
-			this->firstWeight = other.firstWeight;
-			this->secondWeight = other.secondWeight;
-			this->sampleCount = other.sampleCount;
-
-			return *this;
-		}
-
-		/// The calculated kernel density sum
-		float kernelSum;
-
-		/// The entropy info for a pixel in relation to its neighbors
-		float entropy;
-
-		/// The value of the first weight used in the kernel density calculations
-		float firstWeight;
-
-		/// The value of the first weight used in the kernel density calculations
-		float secondWeight;
-
-		/// The number of samples used to estimate the kernel density
-		int sampleCount;
-	};
-
 	/// Alias
 	typedef cv::Point2i Location2D;
 	typedef cv::Point3i Location3D;
-
 
 public:
 	SaliencyDetector() : samplingPercentage(0.25f), neighborhoodSize(5) { };
@@ -140,7 +86,7 @@ protected:
 
 
 /// Convenience aliases
-typedef SaliencyDetector::KernelDensityInfo KernelDensityInfo;
+// typedef SaliencyDetector::KernelDensityInfo KernelDensityInfo;
 
 
 
@@ -187,6 +133,31 @@ private:
 	// std::array requires C++11
 	typedef std::array<PixelelAttribute, 4> AttributeVector;
 
+	class KernelDensityInfo {
+	public:
+		/// Constructor
+		KernelDensityInfo() :
+			kernelSum(0.f),
+			entropy(0.f),
+			firstWeight(0.f),
+			secondWeight(0.f),
+			//weights(0.f, 0.f, 0.f),
+			sampleCount(0) {}
+
+
+		float kernelSum;
+		float entropy;	/// The entropy info for a pixel in relation to its neighbors
+		float firstWeight;
+		float secondWeight;
+		int sampleCount; /// The number of samples used to estimate the kernel density
+	};
+
+	void inline calculateKernelsForChannels(
+			AttributeVector& firstPairAttributes,
+			AttributeVector& secondPairAttributes,
+			float aNorm,
+			float angleBinWidth);
+
 	void calculateChannelAttributes(
 			Location2D first,
 			Location2D second,
@@ -199,7 +170,7 @@ private:
 	 */
 	// TODO use TSamples instead
 	// How to include Samples.h without exposing it in the public API?
-	KernelDensityInfo calculateKernelSum(const std::vector<Location2D>& samples);
+	void calculateKernelSum(const std::vector<Location2D>& samples, KernelDensityInfo& kernelInfo);
 
 	/*!
 	 * Gets the applicable region of the pixels forming two samples

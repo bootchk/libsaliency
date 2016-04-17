@@ -30,7 +30,7 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 		throw std::logic_error("ImageSaliencyDetector: There must be magnitudes info to process!");
 	}
 	// Quantize all channels
-	assert(magnitudes.channels() > 1);
+	assert(magnitudes.channels() >= 1);
 	// TODO symbolic constant for MAX_SUPPORTED_CHANNELS = 4
 	assert(magnitudes.channels() < 5); 	// Allow for future RGBAlpha or RGBDepth
 
