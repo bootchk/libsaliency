@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
 
 	cv::imwrite("SaliencyTestOutput.jpg", detector.getSaliencyMap());
 
-
 	return 0;
 }
 

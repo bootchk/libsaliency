@@ -133,22 +133,32 @@ private:
 	// std::array requires C++11
 	typedef std::array<PixelelAttribute, 4> AttributeVector;
 
+	// weights for each sample pair x channel
+	typedef std::array<std::array<float, 3>, 2> SampleChannelWeights;
+
+	// Packet of info.
+	// densityEstimate is an image sized array of this.
+	// Packet is computed iteratively(for each sample) and summed to densityEstimate.
 	class KernelDensityInfo {
 	public:
-		/// Constructor
-		KernelDensityInfo() :
-			kernelSum(0.f),
-			entropy(0.f),
-			firstWeight(0.f),
-			secondWeight(0.f),
-			//weights(0.f, 0.f, 0.f),
-			sampleCount(0) {}
+		KernelDensityInfo();
 
+		void init();
+		// Update calculated fields of self. Called periodically during iteration over samples.
+		void updatePixelEntropy();
+
+		// Sum iterative KDI into densityEstimate KDI
+		void sumOtherWeightsIntoSelf(const KernelDensityInfo& other);
+
+		float productOfWeights();
+
+		// Data
 
 		float kernelSum;
 		float entropy;	/// The entropy info for a pixel in relation to its neighbors
-		float firstWeight;
-		float secondWeight;
+		SampleChannelWeights weights;
+		//float firstWeight;
+		//float secondWeight;
 		int sampleCount; /// The number of samples used to estimate the kernel density
 	};
 

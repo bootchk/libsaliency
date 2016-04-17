@@ -136,6 +136,7 @@ void ImageSaliencyDetector:: calculateKernelsForChannels(
 	}
 }
 
+
 void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDensityInfo& kernelInfo) {
 	assert(!srcImage.empty());
 	assert(!magnitudes.empty());
@@ -145,7 +146,8 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	int imgWidth = srcImage.cols, imgHeight = srcImage.rows;
 	float sampleDistance1 = 0.f;
 	float sampleDistance2 = 0.f;
-	float distanceKernel = 0.f, angleKernel = 0.f;
+	float distanceKernel = 0.f;
+	//, angleKernel = 0.f;
 
 	// Document magic numbers
 	float binDimension = 10.f;
@@ -195,59 +197,101 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 			secondPairAttributes,
 			aNorm,
 			angleBinWidth);
-	angleKernel = kernelChannels[0];
+	// angleKernel = kernelChannels[0];
 
 	// post results
-	//KernelDensityInfo kernelInfo;
 
-	kernelInfo.firstWeight  = firstPairAttributes[0].weight;
-	kernelInfo.secondWeight = secondPairAttributes[0].weight;
+	for(int channel = 0; channel<magnitudes.channels(); channel++) {
+		kernelInfo.weights[0][channel]  = firstPairAttributes[channel].weight;	// first sample pair
+		kernelInfo.weights[1][channel]  = firstPairAttributes[channel].weight;
+		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
+	}
 
-	// TODO
-	float productOfWeights = firstPairAttributes[0].weight * secondPairAttributes[0].weight
-			* firstPairAttributes[1].weight * secondPairAttributes[1].weight
-			* firstPairAttributes[2].weight * secondPairAttributes[2].weight;
 	float productOfKernelChannels = kernelChannels[0] * kernelChannels[1] * kernelChannels[2];
 
 	// TODO can't we assert that some or all of these are >=0?
 	// TODO check all angleKernels > 0
-	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 && angleKernel > 0) {
+	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 ) { // && angleKernel > 0) {
 		// TODO more kernels
-		kernelInfo.kernelSum = (productOfWeights * distanceKernel * productOfKernelChannels); // angleKernel);
+		kernelInfo.kernelSum = (kernelInfo.productOfWeights() * distanceKernel * productOfKernelChannels); // angleKernel);
 	} else {
 		kernelInfo.kernelSum = 0;
 	}
-	//return kernelInfo;
+	// assert kernelInfo is results from this sample
 }
 
+// KernelDensityInfo methods
 
+// Constructor calls init
+ImageSaliencyDetector::KernelDensityInfo::KernelDensityInfo() {
+	init();
+};
 
+void ImageSaliencyDetector::KernelDensityInfo::init() {
+	kernelSum = 0.f;
+	entropy = 0.f;
+	sampleCount = 0;
+	//firstWeight(0.f),
+	//secondWeight(0.f),
 
+	// compiler will unroll?
+	for(int i=0; i<2; i++) {
+		for(int j=0; j<3; j++) {
+			weights[i][j] = 0.f;
+		}
+	}
+}
 
-void ImageSaliencyDetector::updatePixelEntropy(KernelDensityInfo& kernelInfo) {
-	if (kernelInfo.sampleCount > 0) {
-		// TODO all weights
-		float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;
+float ImageSaliencyDetector::KernelDensityInfo::productOfWeights() {
+	float result = 1.0f;
+	for(int i=0; i<2; i++) {
+		for(int j=0; j<3; j++) {
+			result *= weights[i][j];
+		}
+	}
+	return result;
+}
+
+void ImageSaliencyDetector::KernelDensityInfo::sumOtherWeightsIntoSelf(const KernelDensityInfo& other) {
+	for(int i=0; i<2; i++) {
+		for(int j=0; j<3; j++) {
+			weights[i][j] += other.weights[i][j];
+		}
+	}
+}
+
+void ImageSaliencyDetector::KernelDensityInfo::updatePixelEntropy() {
+	// assert self is a densityEstimate
+	if (sampleCount > 0) {
+
+		float totalWeight = 0;
+		// TODO channelcount
+		for(int i=0; i<2; i++) {
+			for(int j=0; j<3; j++) {
+				totalWeight *= weights[i][j];
+			}
+		}
+		// float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;
 		float estimation = 0.f;
 
 		// Special case: avoid division by 0
 		if (totalWeight <= 0) {
-			totalWeight = static_cast<float>(kernelInfo.sampleCount);
+			totalWeight = static_cast<float>(sampleCount);
 		}
 
-		if (kernelInfo.kernelSum < 0 || isnan(kernelInfo.kernelSum)) {
-			kernelInfo.kernelSum = 0;
+		if (kernelSum < 0 || isnan(kernelSum)) {
+			kernelSum = 0;
 		}
 
-		estimation = kernelInfo.kernelSum / totalWeight;
+		estimation = kernelSum / totalWeight;
 
 		// Another special case: if the calculated values are -ve or NaNs
 		if (estimation <= 1e-15) {
-			kernelInfo.entropy = ERROR_FLAG;
+			entropy = ERROR_FLAG;
 		} else if (isnan(estimation)) {
-			kernelInfo.entropy = ERROR_FLAG;
+			entropy = ERROR_FLAG;
 		} else {
-			kernelInfo.entropy = -1.0f * log2f(estimation * estimation);
+			entropy = -1.0f * log2f(estimation * estimation);
 		}
 	}
 }
@@ -280,7 +324,7 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 
 				// Update the pixel entropy every N (= 32) iterations
 				if (((densityEstimates[row][col].sampleCount + 1) % 32) == 0) {
-					updatePixelEntropy(densityEstimates[row][col]);
+					densityEstimates[row][col].updatePixelEntropy();
 				}
 			}
 		}
@@ -291,8 +335,9 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelResult, int row, int col)
 {
 	densityEstimates[row][col].kernelSum += kernelResult.kernelSum;
-	densityEstimates[row][col].firstWeight += kernelResult.firstWeight;
-	densityEstimates[row][col].secondWeight += kernelResult.secondWeight;
+	//densityEstimates[row][col].firstWeight += kernelResult.firstWeight;
+	//densityEstimates[row][col].secondWeight += kernelResult.secondWeight;
+	densityEstimates[row][col].sumOtherWeightsIntoSelf(kernelResult);
 	densityEstimates[row][col].sampleCount++;
 }
 
@@ -405,6 +450,7 @@ void ImageSaliencyDetector::compute() {
     Bounder bounder = Bounder(neighborhoodSize,  cv::Rect(0, 0, srcImage.cols, srcImage.rows));
 
 	while (counter < reqNumSamples) {
+		// All uninitialized
 		KernelDensityInfo kernelSum;
 		cv::Rect bounds;
 		TSamples samples;
@@ -417,6 +463,7 @@ void ImageSaliencyDetector::compute() {
 		// which seemed to update with a zero kernelSum when sample not in bounds
 		// and also counted that sample.
 		// if (sampler.isSampleInImageBounds(samples)) {
+		kernelSum.init();
 			calculateKernelSum(samples, kernelSum);
 			bounds = bounder.getApplicableBounds(samples);
 			updateApplicableRegion(bounds, kernelSum);
