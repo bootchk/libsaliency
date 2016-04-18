@@ -150,26 +150,9 @@ private:
 	// How to include Samples.h without exposing it in the public API?
 	void calculateKernelSum(const std::vector<Location2D>& samples, KernelDensityInfo& kernelInfo);
 
-	void sumKernelResultToDensityEstimate(
-			const KernelDensityInfo& kernelSum,
-			int x, int y,
-			int channelCount);
 
 	/*!
-	 * Updates the entropy of a pixel given the iteratively-estimated distribution of
-	 * the distance and orientation relationships around it
-	 */
-	void updatePixelEntropy(KernelDensityInfo& kernelInfo);
-
-
-	/*!
-	 * Gets the applicable region of the pixels forming two samples
-	 * that can be updated
-	 */
-	// cv::Rect getApplicableBounds(const std::vector<Location2D>& samples);
-
-	/*!
-	 * Updating the kernel sums of the pixels within the applicable region given
+	 * Update kernel sums of pixels within the applicable region given
 	 */
 	void updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum);
 

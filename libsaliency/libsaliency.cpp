@@ -87,6 +87,7 @@ ImageSaliencyDetector::~ImageSaliencyDetector() { }
 
 
 
+// TODO class for Attributes
 
 // For given pair of pixels, calculate weightedAttributes for each channel (pixelel)
 // TODO Do channels in parallel (vector operation )
@@ -217,8 +218,11 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	}
 
 	// Product of angle kernels
-	// TODO wrong
-	float productOfKernelChannels = kernelChannels[0] * kernelChannels[1] * kernelChannels[2];
+	float productOfKernelChannels = kernelChannels[0];
+	// Multiply by any other channels
+	for (int channel=1; channel<channelCount; channel++) {
+		productOfKernelChannels *= kernelChannels[channel];
+	}
 
 	// TODO can't we assert that some or all of these are >=0?
 	// TODO check all angleKernels > 0
@@ -264,7 +268,14 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 			if (densityEstimates[row][col].sampleCount < sampleCountLimit) {
 				densityEstimates[row][col].sumKernelResult(kernelSum, channelCount);
 
-				// Update the pixel entropy every N (= 32) iterations
+				/*
+				Update pixel entropy every N (= 32) sample contributions.
+				Only some pixels in the region will get updates
+				(they all have their own sampleCount of contributions.)
+
+				lkk I don't understand this, must be something to do with numerical analysis losses.
+				Maybe:  sums get large and loose precision?
+				*/
 				if (((densityEstimates[row][col].sampleCount + 1) % 32) == 0) {
 					densityEstimates[row][col].updatePixelEntropy(channelCount);
 				}

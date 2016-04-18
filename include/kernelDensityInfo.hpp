@@ -19,6 +19,12 @@ public:
 	KernelDensityInfo();
 
 	void init();
+
+	/*!
+		 * Updates the entropy of a pixel given the iteratively-estimated distribution of
+		 * the distance and orientation relationships around it
+		 */
+
 	// Update calculated fields of self. Called periodically during iteration over samples.
 	void updatePixelEntropy(int channelCount);
 
@@ -33,12 +39,17 @@ public:
 
 	// Data
 
+	// kernelSum and weights are intermediate contributes of sample iterations
 	float kernelSum;
-	float entropy;	/// The entropy info for a pixel in relation to its neighbors
+
 	SampleChannelWeights weights;
 	//float firstWeight;
 	//float secondWeight;
-	int sampleCount; /// The number of samples used to estimate the kernel density
+
+	int sampleCount; /// Count of samples contributing to the estimate
+
+	// This is the estimate, the result
+	float entropy;	/// The entropy info for a pixel in relation to its neighbors
 
 };
 
