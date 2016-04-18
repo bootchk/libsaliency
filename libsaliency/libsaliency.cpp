@@ -217,6 +217,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	}
 
 	// Product of angle kernels
+	// TODO wrong
 	float productOfKernelChannels = kernelChannels[0] * kernelChannels[1] * kernelChannels[2];
 
 	// TODO can't we assert that some or all of these are >=0?
@@ -261,7 +262,7 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 			// C++ array access using [] operator does not check.
 			assert (row < inImageSize.height and col < inImageSize.width);
 			if (densityEstimates[row][col].sampleCount < sampleCountLimit) {
-				sumKernelResultToDensityEstimate(kernelSum, row, col, channelCount);
+				densityEstimates[row][col].sumKernelResult(kernelSum, channelCount);
 
 				// Update the pixel entropy every N (= 32) iterations
 				if (((densityEstimates[row][col].sampleCount + 1) % 32) == 0) {
@@ -272,18 +273,6 @@ void ImageSaliencyDetector::updateApplicableRegion(const cv::Rect& bounds, const
 	}
 }
 
-
-void inline ImageSaliencyDetector::sumKernelResultToDensityEstimate(
-		const KernelDensityInfo& kernelResult,
-		int row, int col,
-		int channelCount)
-{
-	densityEstimates[row][col].kernelSum += kernelResult.kernelSum;
-	//densityEstimates[row][col].firstWeight += kernelResult.firstWeight;
-	//densityEstimates[row][col].secondWeight += kernelResult.secondWeight;
-	densityEstimates[row][col].sumOtherWeightsIntoSelf(kernelResult, channelCount);
-	densityEstimates[row][col].sampleCount++;
-}
 
 
 void ImageSaliencyDetector::createSaliencyMap() {
@@ -409,10 +398,10 @@ void ImageSaliencyDetector::compute() {
 		// and also counted that sample.
 		// if (sampler.isSampleInImageBounds(samples)) {
 		kernelSum.init();
-			calculateKernelSum(samples, kernelSum);
-			bounds = bounder.getApplicableBounds(samples);
-			updateApplicableRegion(bounds, kernelSum);
-			++counter;
+		calculateKernelSum(samples, kernelSum);
+		bounds = bounder.getApplicableBounds(samples);
+		updateApplicableRegion(bounds, kernelSum);
+		++counter;
 		//}
 	}
 

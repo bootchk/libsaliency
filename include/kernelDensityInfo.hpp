@@ -27,6 +27,10 @@ public:
 
 	float productOfWeights(int channelCount);
 
+	void sumKernelResult(
+			const KernelDensityInfo& kernelResult,
+			int channelCount);
+
 	// Data
 
 	float kernelSum;

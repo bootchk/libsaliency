@@ -90,4 +90,18 @@ void KernelDensityInfo::updatePixelEntropy(int channelCount) {
 	}
 }
 
+
+// Sum an iterative result to self
+// Assert self is a cumulative result, i.e. a densityEstimate
+void KernelDensityInfo::sumKernelResult(
+		const KernelDensityInfo& kernelResult,
+		int channelCount)
+{
+	kernelSum += kernelResult.kernelSum;
+	//densityEstimates[row][col].firstWeight += kernelResult.firstWeight;
+	//densityEstimates[row][col].secondWeight += kernelResult.secondWeight;
+	sumOtherWeightsIntoSelf(kernelResult, channelCount);
+	sampleCount++;
+}
+
 }
