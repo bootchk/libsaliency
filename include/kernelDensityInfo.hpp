@@ -11,9 +11,17 @@ enum {ERROR_FLAG = -1};
 typedef std::array<std::array<float, 3>, 2> SampleChannelWeights;
 
 
-// Packet of info.
-// densityEstimate is an image sized array of this.
-// Packet is computed iteratively(for each sample) and summed to densityEstimate.
+/*
+Packet of info.
+
+Used in:
+- densityEstimate is an image sized array of this.
+- computed iteratively(for each sample) and summed to densityEstimate.
+
+Some fields are accumulators for iterated results.
+The field 'entropy' (when this is a densityEstimate) is a result,
+from which saliency map is created.
+*/
 class KernelDensityInfo {
 public:
 	KernelDensityInfo();

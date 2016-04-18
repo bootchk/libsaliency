@@ -17,6 +17,7 @@ libsaliency_la_SOURCES = \
 	SamplePool.cpp SamplePool.h \
 	Bounder.cpp Bounder.h \
 	Quantizer.cpp Quantizer.h \
+	PDFEstimate.cpp PDFEstimate.hpp \
 	constants.h \
     Samples.h 
 

@@ -55,17 +55,34 @@ void KernelDensityInfo::sumOtherWeightsIntoSelf(const KernelDensityInfo& other, 
 	}
 }
 
+/*
+lkk: Notes about NaN, from Wiki:
+NaN is an undefined result for certain operations:
+1.  One operand is already NaN
+2.  Indeterminate operations such as mulitplication by infinity
+3.  Yielding complex results such as sqrt(-1)
+NaN is NOT a result of underflow or overflow.
+
+It seems to me that you could carefully avoid NaN by thinking carefully about all earlier operations.
+For example, checking for overflow and underflow (yielding infinity) earlier.
+Maybe it is just more convenient to catch those 'programming errors' here.
+*/
 void KernelDensityInfo::updatePixelEntropy(int channelCount) {
 	// assert self is a densityEstimate
 	if (sampleCount > 0) {
 
-		float totalWeight = 0;
+		// Product of weights across samples AND across channels
+		// TODO doesn't seem to be correct for color
+		float totalWeight = 1;		// !!! Start with identity
 		for(int i=0; i<2; i++) {
 			for(int j=0; j<channelCount; j++) {
 				totalWeight *= weights[i][j];
 			}
 		}
+		// Original code:
 		// float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;
+		// IOW product between pixel pairs
+
 		float estimation = 0.f;
 
 		// Special case: avoid division by 0
@@ -85,6 +102,10 @@ void KernelDensityInfo::updatePixelEntropy(int channelCount) {
 		} else if (isnan(estimation)) {
 			entropy = ERROR_FLAG;
 		} else {
+			// Note estimation, and also entropy, are not functions of their own previous values.
+			// They are functions of kernelSum and weights
+			// I don't understand why we periodically calculate entropy
+			// instead of just calculating it at the end of iteration.
 			entropy = -1.0f * log2f(estimation * estimation);
 		}
 	}

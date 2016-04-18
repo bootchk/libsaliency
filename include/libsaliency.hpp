@@ -39,6 +39,7 @@
 
 #include <opencv2/core/core.hpp>
 
+
 namespace sal
 {
 
@@ -170,8 +171,7 @@ private:
 	cv::Mat srcImage;	// Unspecified channels
 	cv::Mat1f saliencyMap;	// Grayscale
 
-	// vector because it is resized to source image size
-	std::vector< std::vector<KernelDensityInfo> > densityEstimates;
+	sal::PDFEstimate pdfEstimate;
 
 	cv::Size inImageSize;	// At time submitted.
 };
