@@ -42,7 +42,6 @@
 namespace sal
 {
 
-
 /**
  * \brief
  * Abstract class for saliency algorithm, as described in:
@@ -71,9 +70,6 @@ public:
 
 
 protected:
-	/// Used to handle special cases which can produce errors (such as numbers below 1e-15)
-	enum {ERROR_FLAG = -1};
-
 	/// Process resultant saliency map to make it smooth and pretty
 	void postProcessSaliencyMap(cv::Mat1f& salMap, const float& sigma = 18.0f);
 
@@ -112,7 +108,7 @@ public:
 
 public:
 	void setMagnitudes(const cv::Mat& other) { magnitudes = other; }
-    void setOrientations(const cv::Mat& other) { orientations = other; }
+	void setOrientations(const cv::Mat& other) { orientations = other; }
 	void setSourceImage(const cv::Mat& theSrc) { srcImage = theSrc; }
 	cv::Mat getMagnitudes() const { return magnitudes; }
 	cv::Mat getOrientations() const { return orientations; }
@@ -133,46 +129,18 @@ private:
 	// std::array requires C++11
 	typedef std::array<PixelelAttribute, 4> AttributeVector;
 
-	// weights for each sample pair x channel
-	typedef std::array<std::array<float, 3>, 2> SampleChannelWeights;
-
-	// Packet of info.
-	// densityEstimate is an image sized array of this.
-	// Packet is computed iteratively(for each sample) and summed to densityEstimate.
-	class KernelDensityInfo {
-	public:
-		KernelDensityInfo();
-
-		void init();
-		// Update calculated fields of self. Called periodically during iteration over samples.
-		void updatePixelEntropy();
-
-		// Sum iterative KDI into densityEstimate KDI
-		void sumOtherWeightsIntoSelf(const KernelDensityInfo& other);
-
-		float productOfWeights();
-
-		// Data
-
-		float kernelSum;
-		float entropy;	/// The entropy info for a pixel in relation to its neighbors
-		SampleChannelWeights weights;
-		//float firstWeight;
-		//float secondWeight;
-		int sampleCount; /// The number of samples used to estimate the kernel density
-	};
-
 	void inline calculateKernelsForChannels(
 			AttributeVector& firstPairAttributes,
 			AttributeVector& secondPairAttributes,
 			float aNorm,
-			float angleBinWidth);
+			float angleBinWidth,
+			int channelCount);
 
 	void calculateChannelAttributes(
 			Location2D first,
 			Location2D second,
-			AttributeVector& attributes
-			);
+			AttributeVector& attributes,
+			int channelCount);
 
 	/*!
 	 * Calculate the intermediate kernel sum from the contribution of the
@@ -181,6 +149,18 @@ private:
 	// TODO use TSamples instead
 	// How to include Samples.h without exposing it in the public API?
 	void calculateKernelSum(const std::vector<Location2D>& samples, KernelDensityInfo& kernelInfo);
+
+	void sumKernelResultToDensityEstimate(
+			const KernelDensityInfo& kernelSum,
+			int x, int y,
+			int channelCount);
+
+	/*!
+	 * Updates the entropy of a pixel given the iteratively-estimated distribution of
+	 * the distance and orientation relationships around it
+	 */
+	void updatePixelEntropy(KernelDensityInfo& kernelInfo);
+
 
 	/*!
 	 * Gets the applicable region of the pixels forming two samples
@@ -198,14 +178,6 @@ private:
 	 */
 	void createSaliencyMap();
 
-	void sumKernelResultToDensityEstimate(const KernelDensityInfo& kernelSum, int x, int y);
-
-	/*!
-	 * Updates the entropy of a pixel given the iteratively-estimated distribution of
-	 * the distance and orientation relationships around it
-	 */
-	void updatePixelEntropy(KernelDensityInfo& kernelInfo);
-
 
 private:
 	// Pixel attributes
@@ -214,6 +186,8 @@ private:
 
 	cv::Mat srcImage;	// Unspecified channels
 	cv::Mat1f saliencyMap;	// Grayscale
+
+	// vector because it is resized to source image size
 	std::vector< std::vector<KernelDensityInfo> > densityEstimates;
 
 	cv::Size inImageSize;	// At time submitted.

@@ -10,12 +10,14 @@ lib_LTLIBRARIES = libsaliency.la
 # Sources for libsaliency
 libsaliency_la_SOURCES = \
 	libsaliency.cpp libsaliency.hpp \
+	KernelDensityInfo.cpp kernelDensityInfo.hpp \
 	Gradienter.cpp Gradienter.h  \
 	Smoother.cpp Smoother.h \
 	Sampler.cpp Sampler.h \
 	SamplePool.cpp SamplePool.h \
 	Bounder.cpp Bounder.h \
 	Quantizer.cpp Quantizer.h \
+	constants.h \
     Samples.h 
 
 # Linker options libTestProgram

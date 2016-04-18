@@ -66,6 +66,7 @@ void Gradienter::calculateXAndYDerivatives(
 	// Handle pixels at borders?
 	std::cout << "Sobel...\n";
 	// 1,0 means first derivative x
+	// TODO rename deltaX => gradientX
 	cv::Sobel( inImage, deltaX, ddepth, 1, 0, 3, scale, delta, cv::BORDER_DEFAULT );
 	cv::Sobel( inImage, deltaY, ddepth, 0, 1, 3, scale, delta, cv::BORDER_DEFAULT );
 
@@ -80,6 +81,8 @@ void Gradienter::calculateGradientDirectionsAndMagnitudes(const cv::Mat& deltaX,
 	this->gradMagnitudes.create(deltaX.rows, deltaX.cols, deltaX.type());
 	this->gradOrientations.create(deltaX.rows, deltaX.cols, deltaX.type());
 	cv::cartToPolar(deltaX, deltaY, this->gradMagnitudes, this->gradOrientations);
+	// TODO merge mag and orient images into one image for memory locality
+	// call it gradient of dimension [width, height, channels=2]
 }
 
 

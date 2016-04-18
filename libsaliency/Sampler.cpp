@@ -37,8 +37,10 @@ TSamples Sampler::getSample() {
 
 
 TSamples Sampler::getCandidateSample() {
-	// Result is not necessarily in image bounds
-	TSamples result(4);
+
+	// TODO pass by address?
+	// Allocate container for sample points
+	TSamples result(COUNT_SAMPLE_POINTS);
 
 	// Randomly select the location of the first sample
 	result[0].y = rand() % imageHeight;
@@ -59,13 +61,13 @@ TSamples Sampler::getCandidateSample() {
 }
 
 
-// Are sample locations within valid image boundaries
+// Are sample locations within valid image boundaries?
 bool Sampler::isSampleInImageBounds(TSamples& samples) {
-	assert(samples.size() == 4);
+	assert(samples.size() == COUNT_SAMPLE_POINTS);
 
 	bool isValid = true;
 
-	for (size_t i = 0; i < 4; ++i) {
+	for (size_t i = 0; i < COUNT_SAMPLE_POINTS; ++i) {
 		if (samples[i].y < 0 || samples[i].y >= imageHeight || samples[i].x < 0 || samples[i].x >= imageWidth) {
 			isValid = false;
 		}

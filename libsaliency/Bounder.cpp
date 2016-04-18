@@ -13,19 +13,27 @@ sal::Bounder::Bounder(int neighborhoodSize, cv::Rect imageRect) {
 sal::Bounder::~Bounder() { }
 
 
+// Compute aligned bounding rect that covers samples
+// and alter it to be square
+// and clip it to image bounds
 cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 	cv::Rect bounds;
 
+	// TODO is there an openCV function that computes bounding rect for array of points?
+	// TODO separate computation of raw bounding rect from alterations to it.
+
+	// Starting bounds is just UL, LR both equal to same point, first sample
 	int maxX = samples[0].x;
 	int minX = samples[0].x;
 	int maxY = samples[0].y;
 	int minY = samples[0].y;
 
-	 // Get the maximum and minimum, x and y, of samples
-	// Max and mins already initialized for sample[0], iterate over samples[1..3]
-	for (int i = 1; i < 4; i++) {
+	// iterate over other samples[1..3], expanding bounding rect to cover them
+	for (int i = 1; i < COUNT_SAMPLE_POINTS; i++) {
+		// Compute upperRight
 		if (samples[i].x > maxX) maxX = samples[i].x;
 		if (samples[i].y > maxY) maxY = samples[i].y;
+		// Compute lowerLeft
 		if (samples[i].x < minX) minX = samples[i].x;
 		if (samples[i].y < minY) minY = samples[i].y;
 	}

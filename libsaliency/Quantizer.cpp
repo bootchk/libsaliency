@@ -2,6 +2,8 @@
 #include <iostream>
 
 #include <opencv2/core/core.hpp>
+
+#include "constants.h"
 #include "Quantizer.h"
 
 namespace sal {
@@ -31,13 +33,12 @@ void Quantizer::quantizeMagnitudes(const cv::Mat& magnitudes) {
 	}
 	// Quantize all channels
 	assert(magnitudes.channels() >= 1);
-	// TODO symbolic constant for MAX_SUPPORTED_CHANNELS = 4
-	assert(magnitudes.channels() < 5); 	// Allow for future RGBAlpha or RGBDepth
+	assert(magnitudes.channels() <= MAX_CHANNEL_COUNT);
 
 	int width = magnitudes.cols;
 	int height = magnitudes.rows;
 
-	// Allow up to four channels
+	// Support MAX_CHANNEL_COUNT channels (4)
 	cv::Vec4f channelMaxMagnitudes = (FLT_MIN, FLT_MIN, FLT_MIN, FLT_MIN);
 
 	// Use pointer arithmetic into data.
