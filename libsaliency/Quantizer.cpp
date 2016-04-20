@@ -3,7 +3,7 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "constants.h"
+#include "kernelDensityInfo.hpp"	// certain symbolic constants
 #include "Quantizer.h"
 
 namespace sal {

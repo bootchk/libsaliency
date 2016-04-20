@@ -7,4 +7,5 @@ typedef cv::Point2i Location2D;
 typedef std::vector<Location2D> TSamples;
 
 // Count of sample image locations
+// TODO move this to constants.h
 #define COUNT_SAMPLE_POINTS 4

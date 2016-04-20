@@ -1,6 +1,33 @@
 
 #pragma once
 
+#include <array>
+
+/*
+Compile time constants that limit this algorithm.
+Referenced by several class definitions.
+*/
+
+/*
+Max image channels this algorithm supports.
+
+Actual channel count from source image.
+Allow for future RGBAlpha or RGBDepth
+Usually actual channel count is 1:grayscale or 3:color
+
+See also definitions of Vec4f not covered by this constant
+*/
+#define MAX_CHANNEL_COUNT 4
+
+/*
+A sample is a pair of coords.  But this defines that we take two samples (total of four coords.)
+*/
+#define COUNT_SAMPLES 2
+
+// TODO extract this from Samples.h
+// #define COUNT_SAMPLE_COORDS 4
+
+
 namespace sal
 {
 
@@ -8,7 +35,7 @@ namespace sal
 enum {ERROR_FLAG = -1};
 
 // weights for each sample pair x channel
-typedef std::array<std::array<float, 3>, 2> SampleChannelWeights;
+typedef std::array<std::array<float, MAX_CHANNEL_COUNT>, COUNT_SAMPLES> SampleChannelWeights;
 
 
 /*
@@ -26,6 +53,8 @@ class KernelDensityInfo {
 public:
 	KernelDensityInfo();
 
+	static void initClass(int channelCount);	// class method
+
 	void init();
 
 	/*!
@@ -34,16 +63,18 @@ public:
 		 */
 
 	// Update calculated fields of self. Called periodically during iteration over samples.
-	void updatePixelEntropy(int channelCount);
+	// void updatePixelEntropy(int channelCount);
 
 	// Sum iterative KDI into densityEstimate KDI
-	void sumOtherWeightsIntoSelf(const KernelDensityInfo& other, int channelCount);
+	void sumOtherWeightsIntoSelf(const KernelDensityInfo& other);
+	float productOfWeights();
+	void sumSampleResult( const KernelDensityInfo& sampleResult);
 
-	float productOfWeights(int channelCount);
+	float entropy();
 
-	void sumKernelResult(
-			const KernelDensityInfo& kernelResult,
-			int channelCount);
+	// Class var.  !!!! Must be defined in global scope elsewhere.
+	static int channelCount;
+
 
 	// Data
 
@@ -54,10 +85,11 @@ public:
 	//float firstWeight;
 	//float secondWeight;
 
+// private:
 	int sampleCount; /// Count of samples contributing to the estimate
 
 	// This is the estimate, the result
-	float entropy;	/// The entropy info for a pixel in relation to its neighbors
+	// float entropy;	/// The entropy info for a pixel in relation to its neighbors
 
 };
 

@@ -39,37 +39,44 @@ cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 	}
 	// Have two points (upperLeft is minX,minY) that define a bounding rect of samples
 
-	int width = maxX - minX;
-	int height = maxY - minY;
+	int width = maxX - minX + 1;
+	int height = maxY - minY + 1;
 	// assert width and height <= neighborhoodSize
+	assert(width <= neighborhoodSize);
+
 	// Desire a square bounding rect of dimension neighborhoodSize.
 	// (to distribute the kernel result to all density estimates it is part of)
 
 	// Get the x and y disparity: difference from wanted dimension
-	// lkk Why -1 ?
-	//xDisp = (neighborhoodSize - width) - 1;
-	//yDisp = (neighborhoodSize - height) - 1;
-
-	int xDisp = (neighborhoodSize - width);	// The difference in width from neighborhoodSize
-	int yDisp = (neighborhoodSize - height);
+	int widthDisparity = (neighborhoodSize - width);	// The difference in width from neighborhoodSize
+	int heightDisparity = (neighborhoodSize - height);
+	assert(widthDisparity >= 0);
 
 	// We don't divide the disparity across the rect,
 	// the rect expands in the direction of the upper (minY) and left( minX)
-	cv::Rect result = cv::Rect(
-			minX - xDisp, // x
-			minY - yDisp, // y
+	// TODO use openCV rect+=size to expand
+	// TODO neighborhoodSize is not a size, is a dim
+	cv::Rect candidateRect = cv::Rect(
+			minX - widthDisparity, // x
+			minY - heightDisparity, // y
 			neighborhoodSize, // width
 			neighborhoodSize  // height
 			);
-
-	// assert result is square of dimension neighborhoodSize
+	// assert candidateRect is square of dimension neighborhoodSize
 
 	// candidateResult may not be contained in image: clip to image
-	cv::Rect finalResult = result & imageRect;	// intersection
+	cv::Rect finalResult = candidateRect & imageRect;	// intersection
+
+	// Note that openCV rect.br() is NOT in the rect.
+	// not assert(candidateRect.contains(candidateRect.br()));
+	// assert(candidateRect.br().x <= candidateRect.x + candidaterRect.width)
 
 	// ensure finalResult is contained in image
-	assert(finalResult.x>=0 and finalResult.br().x<imageRect.width and finalResult.y>=0 and finalResult.br().y<imageRect.height);
-	// finalResult need not be square
+	// TODO this is wrong, since br().x can equal rect.width
+	assert(finalResult.x>=0 and finalResult.br().x<=imageRect.width and finalResult.y>=0 and finalResult.br().y<=imageRect.height);
 
+	// finalResult need not be square
+	// finalResult can be smaller than candidateRect, but must be larger than 1 pixel
+	// finalResult.width >= 1
 	return finalResult;
 }

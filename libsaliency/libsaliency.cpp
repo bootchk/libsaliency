@@ -1,15 +1,15 @@
 
-#include <cstdlib>
+//#include <cstdlib>
+//#include <stdexcept>
+//#include <cassert>
+
+// For debugging
 #include <iostream>
 #include <cstdio>
-#include <stdexcept>
-#include <cassert>
 #include <ctime>
-#include <cmath>	// TODO Used?
-#include <array>	// TODO Used?
+
 
 // order is important: most basic types/classes first
-#include "constants.h"
 #include "kernelDensityInfo.hpp"
 #include "Bounder.h"
 #include "PDFEstimate.hpp"
@@ -48,7 +48,7 @@ void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& si
 	filteredMap.release();
 
 	/*
-	 * This is the original code.
+	 * Original code for norming
 	filteredMap.copyTo(salMap);
 	double maxVal = 0, minVal = 0;
 	cv::minMaxLoc(salMap, &minVal, &maxVal);
@@ -121,6 +121,23 @@ void ImageSaliencyDetector:: calculateChannelAttributes(
 }
 
 
+// Kernel function
+inline float gaussian(float difference, float height, float width) {
+	// Standard gaussian function
+	// For convenience, the standard minus sign is attached to the denominator at '-2.f'
+	assert(not isnan(difference));
+	float result = (1.f / height) * exp( (pow(difference, 2) / (-2.f * pow(width, 2))));
+
+	// not assert(height < 1) => not assert(result<1)
+
+	assert(("Gaussian is a pdf", result >= 0.f));
+	// assert(difference is small and width is small) => Result may not underflow, i.e. infinitely small or zero
+	// But it seems to happen anyway
+	assert( not isnan(result));
+	return result;
+}
+
+
 std::array<float, MAX_CHANNEL_COUNT> kernelChannels;
 
 // For given sample (two pair_, calculate kernel result (gaussian function of gradient angle differences)
@@ -133,7 +150,7 @@ void ImageSaliencyDetector:: calculateKernelsForChannels(
 {
 	for (int channel=0; channel<channelCount; channel++) {
 		float angleDifference = firstPairAttributes[channel].angle - secondPairAttributes[channel].angle;
-		kernelChannels[channel] = (1.f / aNorm) * exp((pow(angleDifference, 2) / (-2.f * pow(angleBinWidth, 2))));
+		kernelChannels[channel] = gaussian( angleDifference, aNorm, angleBinWidth );
 	}
 	// assert kernelChannels holds kernel value for each channel
 }
@@ -153,7 +170,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	float distanceKernel = 0.f;
 	//, angleKernel = 0.f;
 
-	// Document magic numbers
+	// TODO Document magic numbers
 	float binDimension = 10.f;
 	float distanceBinWidth = sqrt(pow(imgWidth, 2) + pow(imgHeight, 2)) / binDimension;
 	float angleBinWidth = 3.14159265358979323846 / binDimension;
@@ -177,6 +194,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	AttributeVector firstPairAttributes;
 	AttributeVector secondPairAttributes;
 
+	// Difference between pixel mags and dirs, for each channel
 	calculateChannelAttributes( first, second, firstPairAttributes, channelCount);
 	calculateChannelAttributes( third, fourth, secondPairAttributes, channelCount);
 
@@ -189,9 +207,8 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	//sampleMag2   = sqrt(pow(magnitudes(third.y, third.x) - magnitudes(fourth.y, fourth.x), 2));
 	// TODO weights per channel?????
 
-	// Statistical kernel is gaussian
 	// One attribute is distance between samples
-	distanceKernel = (1.f / dNorm) * exp((pow(sampleDistance1 - sampleDistance2, 2) / (-2.f * pow(distanceBinWidth, 2))));
+	distanceKernel = gaussian( sampleDistance1 - sampleDistance2, dNorm, distanceBinWidth);
 
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels
@@ -204,15 +221,6 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 			channelCount);
 	// angleKernel = kernelChannels[0];
 
-	// post results
-
-	// Put weights into result
-	for(int channel = 0; channel<channelCount; channel++) {
-		kernelInfo.weights[0][channel]  = firstPairAttributes[channel].weight;	// first sample pair
-		kernelInfo.weights[1][channel]  = secondPairAttributes[channel].weight;
-		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
-	}
-
 	// Product of angle kernels
 	float productOfKernelChannels = kernelChannels[0];
 	// Multiply by any other channels
@@ -220,14 +228,25 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 		productOfKernelChannels *= kernelChannels[channel];
 	}
 
-	// TODO can't we assert that some or all of these are >=0?
-	// TODO check all angleKernels > 0
-	if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0 ) { // && angleKernel > 0) {
-		// TODO more kernels
-		kernelInfo.kernelSum = (kernelInfo.productOfWeights(channelCount) * distanceKernel * productOfKernelChannels); // angleKernel);
-	} else {
-		kernelInfo.kernelSum = 0;
+	// post results into sampleResult
+
+	// Put weights into sampleResult (needed to call sampleResult.productOfWeights())
+	for(int channel = 0; channel<channelCount; channel++) {
+		kernelInfo.weights[0][channel]  = firstPairAttributes[channel].weight;	// first sample pair
+		kernelInfo.weights[1][channel]  = secondPairAttributes[channel].weight;
+		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
 	}
+
+	// summand of this iteration to be accumulated into kernelSum
+	float kernelTerm = kernelInfo.productOfWeights() * distanceKernel * productOfKernelChannels; // angleKernel);;
+
+	// Summand must not be negative, but the weights can be zero so summand zero
+	//
+	// if (kernelTerm < 0 ) kernelTerm = 0;
+	// if (firstPairAttributes[0].weight > 0 && secondPairAttributes[0].weight > 0 && distanceKernel > 0   && angleKernel > 0) {
+	assert(kernelTerm >= 0.f);
+	kernelInfo.kernelSum = kernelTerm;	// put kernel summand into result
+
 	// assert kernelInfo is results from this sample
 }
 
@@ -242,22 +261,15 @@ void ImageSaliencyDetector::createSaliencyMap() {
 	int width = srcImage.cols;
 	int height = srcImage.rows;
 
-	// Initialize saliency map
 	saliencyMap.create(height, width);
+	// assert saliency map, compared to pdfEstimate:
+	// - same width and height
+	// - one channel
+	// - lesser or equal depth (grayscale)
 
+	// TODO allow for color saliency maps i.e. false color
 
-
-	float maxEntropy = pdfEstimate.maxEntropy();
-
-	float minEntropy = pdfEstimate.maxEntropy();
-
-	pdfEstimate.shiftValuesSoMinIsZero(minEntropy);
-
-	// Since we shifted values, also adjust maximum entropy
-	maxEntropy -= minEntropy;
-
-	pdfEstimate.quantizeAndCopyTo(maxEntropy, saliencyMap);
-
+	pdfEstimate.copyResultToGrayscaleImage(saliencyMap);
 	// assert saliencyMap is created and filled
 }
 
@@ -285,7 +297,7 @@ void ImageSaliencyDetector::compute() {
 	Quantizer quantizer;
 	quantizer.quantizeMagnitudes(magnitudes);
 
-	std::cout << "Iterating on samples.\n";
+	printf("Iterating on samples\n");
 
 
 	// Perform iterative saliency detection mechanism
@@ -303,9 +315,9 @@ void ImageSaliencyDetector::compute() {
 
     Bounder bounder = Bounder(neighborhoodSize,  cv::Rect(0, 0, srcImage.cols, srcImage.rows));
 
+    KernelDensityInfo sampleResult = KernelDensityInfo();
 	while (counter < reqNumSamples) {
 		// All uninitialized
-		KernelDensityInfo kernelSum;
 		cv::Rect bounds;
 		TSamples samples;
 
@@ -314,17 +326,18 @@ void ImageSaliencyDetector::compute() {
 		// assert samples from pool is in image bounds
 
 		// lkk Note this differs from original code,
-		// which seemed to update with a zero kernelSum when sample not in bounds
+		// which seemed to update with a zero sampleResult when sample not in bounds
 		// and also counted that sample.
 		// if (sampler.isSampleInImageBounds(samples)) {
-		kernelSum.init();
-		calculateKernelSum(samples, kernelSum);
+		sampleResult.init();
+		calculateKernelSum(samples, sampleResult);
 		bounds = bounder.getApplicableBounds(samples);
-		pdfEstimate.updateApplicableRegion(bounds, kernelSum);
+		pdfEstimate.updateApplicableRegion(bounds, sampleResult);
 		++counter;
 		//}
 	}
 
+	printf("Creating saliency image\n");
 	createSaliencyMap();
 	// saliency map is same dimensions as src, but fewer channels
 	assert(saliencyMap.cols == inImageSize.width and saliencyMap.rows == inImageSize.height);

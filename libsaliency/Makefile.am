@@ -18,7 +18,6 @@ libsaliency_la_SOURCES = \
 	Bounder.cpp Bounder.h \
 	Quantizer.cpp Quantizer.h \
 	PDFEstimate.cpp PDFEstimate.hpp \
-	constants.h \
     Samples.h 
 
 # Linker options libTestProgram
