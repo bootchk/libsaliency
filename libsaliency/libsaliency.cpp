@@ -132,7 +132,7 @@ inline float gaussian(float difference, float height, float width) {
 
 	assert(("Gaussian is a pdf", result >= 0.f));
 	// assert(difference is small and width is small) => Result may not underflow, i.e. infinitely small or zero
-	// But it seems to happen anyway
+	// But it seems to happen anyway, so not assert(result > 0)
 	assert( not isnan(result));
 	return result;
 }

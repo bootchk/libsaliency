@@ -12,6 +12,14 @@ sal::Bounder::Bounder(int neighborhoodSize, cv::Rect imageRect) {
 
 sal::Bounder::~Bounder() { }
 
+/*
+ * TODO this code would grow the bounding rect uniformly around center of bounding rect
+ *
+cv::Size deltaSize( faces[i].width * 0.1f, faces[i].height * 0.1f ); // 0.1f = 10/100
+cv::Point offset( deltaSize.width/2, deltaSize.height/2);
+faces[i] += deltaSize;
+faces[i] -= offset;
+*/
 
 // Compute aligned bounding rect that covers samples
 // and alter it to be square
@@ -39,10 +47,14 @@ cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 	}
 	// Have two points (upperLeft is minX,minY) that define a bounding rect of samples
 
+	// TODO use cv::Size
 	int width = maxX - minX + 1;
 	int height = maxY - minY + 1;
 	// assert width and height <= neighborhoodSize
 	assert(width <= neighborhoodSize);
+
+
+	// TODO should break this up:  produce candidateRect, produce expandedRect, clip expandedRect
 
 	// Desire a square bounding rect of dimension neighborhoodSize.
 	// (to distribute the kernel result to all density estimates it is part of)
@@ -72,7 +84,7 @@ cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 	// assert(candidateRect.br().x <= candidateRect.x + candidaterRect.width)
 
 	// ensure finalResult is contained in image
-	// TODO this is wrong, since br().x can equal rect.width
+	// Since br() is not contained, br().x can equal rect.width
 	assert(finalResult.x>=0 and finalResult.br().x<=imageRect.width and finalResult.y>=0 and finalResult.br().y<=imageRect.height);
 
 	// finalResult need not be square
