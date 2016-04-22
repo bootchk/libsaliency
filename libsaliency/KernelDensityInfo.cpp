@@ -39,9 +39,12 @@ void KernelDensityInfo::init() {
 	// Init max count of channels, even if actual channels is less
 	// compiler will unroll?
 	for(int i=0; i<2; i++) {
+		weights[i] = 0.f;
+		/*
 		for(int j=0; j<MAX_CHANNEL_COUNT; j++) {
 			weights[i][j] = 0.f;
 		}
+		*/
 	}
 }
 
@@ -51,18 +54,24 @@ void KernelDensityInfo::init() {
 float KernelDensityInfo::productOfWeights() {
 	float result = 1.0f;
 	for(int i=0; i<2; i++) {
+		result *= weights[i];
+		/*
 		for(int j=0; j<KernelDensityInfo::channelCount; j++) {
 			result *= weights[i][j];
 		}
+		*/
 	}
 	return result;
 }
 
 void KernelDensityInfo::sumOtherWeightsIntoSelf(const KernelDensityInfo& other) {
 	for(int i=0; i<2; i++) {
+		weights[i] += other.weights[i];
+		/*
 		for(int j=0; j<KernelDensityInfo::channelCount; j++) {
 			weights[i][j] += other.weights[i][j];
 		}
+		*/
 	}
 }
 
@@ -84,7 +93,7 @@ void KernelDensityInfo::updatePixelEntropy(int channelCount) {
 	if (sampleCount > 0) {
 
 		// Product of weights across samples AND across channels
-		// TODO doesn't seem to be correct for color
+		// doesn't seem to be correct for color
 		float totalWeight = 1.f;		// !!! Start with identity
 		for(int i=0; i<2; i++) {
 			for(int j=0; j<channelCount; j++) {
@@ -156,13 +165,15 @@ float KernelDensityInfo::entropy() {
 	else
 	{
 		// printf("Sample count non zero %i \n", sampleCount);
-		// Product of weights across samples AND across channels
-		// TODO doesn't seem to be correct for color
 		float totalWeight = 1.f;		// !!! Start with identity
 		for(int i=0; i<2; i++) {
+			totalWeight *= weights[i];
+			/*
+			// Product of weights across samples AND across channels
 			for(int j=0; j<KernelDensityInfo::channelCount; j++) {
 				totalWeight *= weights[i][j];
 			}
+			*/
 		}
 		// Original code:
 		// float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;

@@ -35,8 +35,8 @@ namespace sal
 enum {ERROR_FLAG = -1};
 
 // weights for each sample pair x channel
-typedef std::array<std::array<float, MAX_CHANNEL_COUNT>, COUNT_SAMPLES> SampleChannelWeights;
-
+// typedef std::array<std::array<float, MAX_CHANNEL_COUNT>, COUNT_SAMPLES> SampleChannelWeights;
+typedef std::array<float, COUNT_SAMPLES> SampleWeights;
 
 /*
 Packet of info.
@@ -49,6 +49,7 @@ Some fields are accumulators for iterated results.
 The field 'entropy' (when this is a densityEstimate) is a result,
 from which saliency map is created.
 */
+// TODO this could be two subclasses: each use does not use all fields
 class KernelDensityInfo {
 public:
 	KernelDensityInfo();
@@ -58,9 +59,9 @@ public:
 	void init();
 
 	/*!
-		 * Updates the entropy of a pixel given the iteratively-estimated distribution of
-		 * the distance and orientation relationships around it
-		 */
+	* Updates the entropy of a pixel given the iteratively-estimated distribution of
+	* the distance and orientation relationships around it
+	 */
 
 	// Update calculated fields of self. Called periodically during iteration over samples.
 	// void updatePixelEntropy(int channelCount);
@@ -70,6 +71,8 @@ public:
 	float productOfWeights();
 	void sumSampleResult( const KernelDensityInfo& sampleResult);
 
+	// Estimated entropy of a pixel in relation to its neighbors
+	// Computed at least at end of sampling.
 	float entropy();
 
 	// Class var.  !!!! Must be defined in global scope elsewhere.
@@ -81,15 +84,10 @@ public:
 	// kernelSum and weights are intermediate contributes of sample iterations
 	float kernelSum;
 
-	SampleChannelWeights weights;
-	//float firstWeight;
-	//float secondWeight;
+	SampleWeights weights;
 
 // private:
 	int sampleCount; /// Count of samples contributing to the estimate
-
-	// This is the estimate, the result
-	// float entropy;	/// The entropy info for a pixel in relation to its neighbors
 
 };
 

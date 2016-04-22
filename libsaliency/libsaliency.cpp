@@ -7,10 +7,13 @@
 #include <iostream>
 #include <cstdio>
 #include <ctime>
+#include <array>
 
 
 // order is important: most basic types/classes first
 #include "kernelDensityInfo.hpp"
+#include "SaliencyMath.hpp"
+#include "Channels.hpp"
 #include "Bounder.h"
 #include "PDFEstimate.hpp"
 #include "libsaliency.hpp"
@@ -19,6 +22,8 @@
 // #include "Sampler.h"	// Original alternative to SamplePool
 #include "SamplePool.h"
 #include "Quantizer.h"
+
+
 
 
 
@@ -82,16 +87,42 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 ImageSaliencyDetector::~ImageSaliencyDetector() { }
 
 
+// Extract channel attributes from image into a short container (vector)
+void ImageSaliencyDetector:: extractChannelAttributes(
+		const Location2D first,
+		Channels& firstAttributes,
+		cv::Mat image,
+		const int channelCount
+		)
+{
+	// address arithmetic
+	int stride = channelCount;
+	// row * rowLength + col * stride i.e. elementLength
+	int firstPixelAddress = first.y * (image.cols * stride) + (first.x * stride);
+
+	// To use address arithmetic, indexed pointer must be of proper type
+	// i.e. compiler multiplies by sizeof(type)
+	float* attributeData = (float*) image.data;
+
+	for(int channel=0; channel<channelCount; channel++ ) {
+		// TODO abs instead of sqrt(pow()
+		// firstAttribute is magnitude
+		float signedValue = attributeData[firstPixelAddress + channel];
+		firstAttributes[channel] = sqrt(pow(signedValue, 2));
+	};
+}
 
 // TODO class for Attributes
 
-// For given pair of pixels, calculate weightedAttributes for each channel (pixelel)
+/*
+// For given pair of pixels, calculate weight and angle attributes for each channel (pixelel)
 // TODO Do channels in parallel (vector operation )
 void ImageSaliencyDetector:: calculateChannelAttributes(
-		Location2D first,
-		Location2D second,
-		AttributeVector& attributes,
-		int channelCount
+		const Location2D first,
+		const Location2D second,
+		SingleAttributeVector& firstAttributes,
+		SingleAttributeVector& secondAttributes,
+		const int channelCount
 		)
 {
 	// address arithmetic
@@ -107,55 +138,29 @@ void ImageSaliencyDetector:: calculateChannelAttributes(
 
 	for(int channel=0; channel<channelCount; channel++ ) {
 		// TODO abs instead of sqrt(pow()
+		// firstAttribute is magnitude
 		float signedValue =
 				magnitudeData[firstPixelAddress + channel] -
 				magnitudeData[secondPixelAddress + channel] ;
-		attributes[channel].weight = sqrt(pow(signedValue, 2));
+		firstAttributes[channel] = sqrt(pow(signedValue, 2));
 
+		// secondAttribute is direction (sic angle)
 		signedValue =
 				orientationData[firstPixelAddress + channel] -
 				orientationData[secondPixelAddress + channel] ;
-		attributes[channel].angle = sqrt(pow(signedValue, 2));
+		secondAttributes[channel] = sqrt(pow(signedValue, 2));
 	};
 	// Assert attributes has angle,weight for each channel
 }
+*/
 
 
-// Kernel function
-inline float gaussian(float difference, float height, float width) {
-	// Standard gaussian function
-	// For convenience, the standard minus sign is attached to the denominator at '-2.f'
-	assert(not isnan(difference));
-	float result = (1.f / height) * exp( (pow(difference, 2) / (-2.f * pow(width, 2))));
 
-	// not assert(height < 1) => not assert(result<1)
+// std::array<float, MAX_CHANNEL_COUNT> kernelChannels;
 
-	assert(("Gaussian is a pdf", result >= 0.f));
-	// assert(difference is small and width is small) => Result may not underflow, i.e. infinitely small or zero
-	// But it seems to happen anyway, so not assert(result > 0)
-	assert( not isnan(result));
-	return result;
-}
-
-// Pi is not exactly expressable in float.  Value of M_PI from math.h depends on C implementation
-#define LARGER_THAN_PI  3.1416
-
-float angleBetween(float angle1, float angle2)
-{
-	// Smaller of subtended angles
-	// Not just: float result = angle1 - angle2;
-
-	// Require angles are in units radians (because sin requires it)
-	// Require angles <= infinity and angles >= -infinity
-	float result = atan2(sin(angle1-angle2), cos(angle1-angle2));
-	assert(result >= -LARGER_THAN_PI and result <= LARGER_THAN_PI);
-	// Result is signed (later we square it), but abs(value) < number slightly larger than PI
-	return result;
-}
-
-std::array<float, MAX_CHANNEL_COUNT> kernelChannels;
-
-// For given sample (two pair_, calculate kernel result (gaussian function of gradient angle differences)
+// For given sample (two pair_, calculate kernel result by channel
+// Not used until I figure out how to properly use vectors of kernels
+/*
 void ImageSaliencyDetector:: calculateKernelsForChannels(
 		AttributeVector& firstPairAttributes,
 		AttributeVector& secondPairAttributes,
@@ -168,8 +173,59 @@ void ImageSaliencyDetector:: calculateKernelsForChannels(
 				angleBetween(firstPairAttributes[channel].angle, secondPairAttributes[channel].angle),
 				aNorm, angleBinWidth );
 	}
-	// assert kernelChannels holds kernel value for each channel
+	// assert static var kernelChannels holds kernel value for each channel
 }
+*/
+
+
+/*
+float productOfKernels(AttributeVector& firstPairAttributes,
+		AttributeVector& secondPairAttributes)
+{
+	float firstPairAttributeSum = sumChannels(firstPairAttributes);
+}
+*/
+
+float ImageSaliencyDetector::calulateAngleKernel(
+		const Channels& anglesFirst,
+		const Channels& anglesSecond,
+		const Channels& anglesThird,
+		const Channels& anglesFourth,
+		const float aNorm, const float angleBinWidth,
+		const int channelCount)
+{
+	float result;
+	/*
+	float angleSum = sumChannels(
+			angleBetweenChannels(
+					angleBetweenChannels(anglesFirst, anglesSecond,
+							channelCount),
+					angleBetweenChannels(anglesThird, anglesFourth,
+							channelCount),
+					channelCount),
+			channelCount);
+	*/
+	float angleSum = 0;
+	result = gaussian(angleSum, aNorm, angleBinWidth);
+	return result;
+}
+
+
+void ImageSaliencyDetector::calculateWeights(
+		float& sample1Weight, float&sample2Weight,
+		Channels&firstMags,
+		Channels&secondMags,
+		Channels&thirdMags,
+		Channels&fourthMags,
+		const int countChannels)
+{
+	// delta first and second, then sum
+	sample1Weight =
+			firstMags.deltaChannels( secondMags, countChannels).sumChannels(countChannels);
+	sample2Weight =
+				thirdMags.deltaChannels( fourthMags, countChannels).sumChannels(countChannels);
+}
+
 
 
 void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDensityInfo& kernelInfo) {
@@ -184,7 +240,6 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	float sampleDistance1 = 0.f;
 	float sampleDistance2 = 0.f;
 	float distanceKernel = 0.f;
-	//, angleKernel = 0.f;
 
 	// TODO Document magic numbers
 	float binDimension = 10.f;
@@ -207,12 +262,29 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	sampleDistance2 = sqrt(pow((third.y - fourth.y), 2) + pow((third.x - fourth.x), 2));
 
 	// Further attributes: difference in gradient direction between in pixelel (channel) of two pixels of a pair
-	AttributeVector firstPairAttributes;
-	AttributeVector secondPairAttributes;
+	Channels firstAngles;
+	Channels secondAngles;
+	Channels thirdAngles;
+	Channels fourthAngles;
+
+	Channels firstMags;
+	Channels secondMags;
+	Channels thirdMags;
+	Channels fourthMags;
 
 	// Difference between pixel mags and dirs, for each channel
-	calculateChannelAttributes( first, second, firstPairAttributes, channelCount);
-	calculateChannelAttributes( third, fourth, secondPairAttributes, channelCount);
+	extractChannelAttributes( first, firstAngles, orientations, channelCount);
+	extractChannelAttributes( second, secondAngles, orientations, channelCount);
+	extractChannelAttributes( third, thirdAngles, orientations, channelCount);
+	extractChannelAttributes( fourth, fourthAngles, orientations, channelCount);
+
+
+	extractChannelAttributes( first, firstMags, magnitudes, channelCount);
+	extractChannelAttributes( second, secondMags, magnitudes, channelCount);
+	extractChannelAttributes( third, thirdMags, magnitudes, channelCount);
+	extractChannelAttributes( fourth, fourthMags, magnitudes, channelCount);
+
+	//calculateChannelAttributes( third, fourth, secondPairAngles, secondPairMags, channelCount);
 
 	// !!! y first when addressing Mat using () or at()
 	//sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
@@ -229,32 +301,53 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels
 	// For now, only using channel 0 (say Green.)
+	/*
 	calculateKernelsForChannels(
 			firstPairAttributes,
 			secondPairAttributes,
 			aNorm,
 			angleBinWidth,
 			channelCount);
-	// angleKernel = kernelChannels[0];
+	*/
 
+	float angleKernel = calulateAngleKernel(
+			firstAngles, secondAngles, thirdAngles, fourthAngles,
+			aNorm, angleBinWidth,
+			channelCount);
+
+	/*
 	// Product of angle kernels
 	float productOfKernelChannels = kernelChannels[0];
 	// Multiply by any other channels
 	for (int channel=1; channel<channelCount; channel++) {
 		productOfKernelChannels *= kernelChannels[channel];
 	}
+	*/
 
 	// post results into sampleResult
 
+	// TODO
 	// Put weights into sampleResult (needed to call sampleResult.productOfWeights())
+	/*
 	for(int channel = 0; channel<channelCount; channel++) {
-		kernelInfo.weights[0][channel]  = firstPairAttributes[channel].weight;	// first sample pair
-		kernelInfo.weights[1][channel]  = secondPairAttributes[channel].weight;
+		kernelInfo.weights[0][channel]  = firstPairMags[channel];	// first sample pair
+		kernelInfo.weights[1][channel]  = secondPairMags[channel];
 		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
 	}
+	*/
+	float sample1Weight;
+	float sample2Weight;
+	calculateWeights(sample1Weight, sample2Weight,
+			firstMags,
+			secondMags,
+			thirdMags,
+			fourthMags,
+			channelCount);
+	kernelInfo.weights[0] = sample1Weight;
+	kernelInfo.weights[1] = sample2Weight;
 
-	// summand of this iteration to be accumulated into kernelSum
-	float kernelTerm = kernelInfo.productOfWeights() * distanceKernel * productOfKernelChannels; // angleKernel);;
+	// summand of this iteration, to be accumulated into kernelSum
+	float kernelTerm = kernelInfo.productOfWeights() * distanceKernel * angleKernel;
 
 	// Summand must not be negative, but the weights can be zero so summand zero
 	//

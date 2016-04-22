@@ -120,28 +120,46 @@ public:
 
 private:
 
-	struct PixelelAttribute {
-		float angle;
-		float weight;
-	};
-
-	// Short container of attributes, one per channel (e.g. color)
-	// OpenCV requires def of inner datatype, i.e. custom type.....   typedef cv::Vec<Attribute, 4>  AttributeVector;
-	// std::array requires C++11
-	typedef std::array<PixelelAttribute, 4> AttributeVector;
-
-	void inline calculateKernelsForChannels(
+	/*
+	/void inline calculateKernelsForChannels(
 			AttributeVector& firstPairAttributes,
 			AttributeVector& secondPairAttributes,
 			float aNorm,
 			float angleBinWidth,
 			int channelCount);
+	*/
 
+	void extractChannelAttributes(
+			const Location2D first,
+			Channels& firstAttributes,
+			cv::Mat image,
+			const int channelCount
+			);
+
+	float calulateAngleKernel(
+			const Channels& anglesFirst,
+			const Channels& anglesSecond,
+			const Channels& anglesThird,
+			const Channels& anglesFourth,
+			const float aNorm, const float angleBinWidth,
+			const int channelCount);
+
+	void calculateWeights(
+			float& sample1Weight, float&sample2Weight,
+			Channels&firstMags,
+			Channels&secondMags,
+			Channels&thirdMags,
+			Channels&fourthMags,
+			const int countChannels);
+
+	/*
 	void calculateChannelAttributes(
-			Location2D first,
-			Location2D second,
-			AttributeVector& attributes,
-			int channelCount);
+			const Location2D first,
+			const Location2D second,
+			Channels& firstAttributes,
+			Channels& secondAttributes,
+			const int channelCount);
+	*/
 
 	/*!
 	 * Calculate the intermediate kernel sum from the contribution of the
