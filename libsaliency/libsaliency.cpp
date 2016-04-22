@@ -137,6 +137,21 @@ inline float gaussian(float difference, float height, float width) {
 	return result;
 }
 
+// Pi is not exactly expressable in float.  Value of M_PI from math.h depends on C implementation
+#define LARGER_THAN_PI  3.1416
+
+float angleBetween(float angle1, float angle2)
+{
+	// Smaller of subtended angles
+	// Not just: float result = angle1 - angle2;
+
+	// Require angles are in units radians (because sin requires it)
+	// Require angles <= infinity and angles >= -infinity
+	float result = atan2(sin(angle1-angle2), cos(angle1-angle2));
+	assert(result >= -LARGER_THAN_PI and result <= LARGER_THAN_PI);
+	// Result is signed (later we square it), but abs(value) < number slightly larger than PI
+	return result;
+}
 
 std::array<float, MAX_CHANNEL_COUNT> kernelChannels;
 
@@ -149,8 +164,9 @@ void ImageSaliencyDetector:: calculateKernelsForChannels(
 		int channelCount)
 {
 	for (int channel=0; channel<channelCount; channel++) {
-		float angleDifference = firstPairAttributes[channel].angle - secondPairAttributes[channel].angle;
-		kernelChannels[channel] = gaussian( angleDifference, aNorm, angleBinWidth );
+		kernelChannels[channel] = gaussian(
+				angleBetween(firstPairAttributes[channel].angle, secondPairAttributes[channel].angle),
+				aNorm, angleBinWidth );
 	}
 	// assert kernelChannels holds kernel value for each channel
 }

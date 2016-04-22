@@ -16,11 +16,15 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-	cv::Mat1f img = cv::imread("data/inGrayscale/croppedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-	// cv::Mat1f img = cv::imread("data/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
-	// cv::Mat1f img = cv::imread("data/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	// original test data: has a thin black line on lower and right edge
+	// cv::Mat1f img = cv::imread("data/inGrayscale/bike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+	// Same as above but with thin black line cropped out
+	//cv::Mat1f img = cv::imread("data/inGrayscale/croppedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+	// cv::Mat1f img = cv::imread("data/inGrayscale/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
+	// Very large image
+	cv::Mat1f img = cv::imread("data/inGrayscale/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
-	// For color, 3 channels
+	// Color, 3 channels
 	//cv::Mat3f img = cv::imread("data/inColor/scenery.jpg", CV_LOAD_IMAGE_COLOR);
 
 	if (img.empty()) {
