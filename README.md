@@ -45,3 +45,18 @@ Dependencies
 ------------
 
 Depends on openCV v2 (package opencv-dev, which includes headers and libraries.)
+
+
+ChangeLog
+---------
+
+Version 1 is like the original, just cleaned of cruft and built as a library.
+
+Subsequently:
+- restructured the code for ease of reading and modification
+- some fixes that might have improved the results
+- added ability to accept a color image, but the resulting grayscale saliency map is not better 
+than starting from the grayscale of the color image
+
+If you want stable code, you should use the release of version 1.
+If you want code you can play with, you should use the latest version.

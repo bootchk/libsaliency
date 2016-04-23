@@ -447,7 +447,7 @@ void ImageSaliencyDetector::compute() {
 		// if (sampler.isSampleInImageBounds(samples)) {
 		sampleResult.init();
 		calculateKernelSum(samples, sampleResult);
-		bounds = bounder.getApplicableBounds(samples);
+		bounds = bounder.getRawApplicableBounds(samples);	// OR getApplicableBounds()
 		pdfEstimate.updateApplicableRegion(bounds, sampleResult);
 		++counter;
 		//}

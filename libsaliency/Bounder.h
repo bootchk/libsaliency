@@ -23,6 +23,10 @@ public:
 	virtual ~Bounder();
 
 	cv::Rect getApplicableBounds(const TSamples&);
+	cv::Rect getRawApplicableBounds(const TSamples&);
+	cv::Rect boundsForSample(const TSamples& samples);
+	cv::Rect coveringSquareRect(const cv::Rect rect);
+	cv::Rect clippedRectToImage(const cv::Rect rect);
 
 private:
 	int neighborhoodSize;

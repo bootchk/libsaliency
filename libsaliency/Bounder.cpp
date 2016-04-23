@@ -1,9 +1,11 @@
 
 #include <cstdio>
+#include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "Samples.h"
 #include "Bounder.h"
 
+namespace sal {
 
 sal::Bounder::Bounder(int neighborhoodSize, cv::Rect imageRect) {
 	this->neighborhoodSize = neighborhoodSize;
@@ -27,8 +29,41 @@ faces[i] -= offset;
 cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 	cv::Rect bounds;
 
+	cv::Rect rawBounds = boundsForSample(samples);
+	// since samples are in image, rawBounds are also
+
+	// Desire a square bounding rect of dimension neighborhoodSize.
+	// (to distribute the kernel result to all density estimates it is part of)
+	cv::Rect cover = coveringSquareRect(rawBounds);
+
+	// cover may not be contained in image: clip to image
+	cv::Rect result = clippedRectToImage(cover);
+
+	// result need not be square
+	// result can be smaller than cover, but must be larger than 1 pixel
+	// result.width >= 1
+
+	return result;
+}
+
+// Found that expanding and clipping the rawBounds is not necessary for good results.
+cv::Rect sal::Bounder::getRawApplicableBounds(const TSamples& samples) {
+	cv::Rect bounds;
+
+	cv::Rect rawBounds = boundsForSample(samples);
+	// since samples are in image, rawBounds are also
+
+	// result need not be square
+	// result must be larger than 1 pixel
+	// result.width >= 1
+
+	return rawBounds;	// Test not expanding rawBounds
+}
+
+// Aligned rect that bounds given sample
+cv::Rect sal::Bounder::boundsForSample(const TSamples& samples)
+{
 	// TODO is there an openCV function that computes bounding rect for array of points?
-	// TODO separate computation of raw bounding rect from alterations to it.
 
 	// Starting bounds is just UL, LR both equal to same point, first sample
 	int maxX = samples[0].x;
@@ -45,50 +80,66 @@ cv::Rect sal::Bounder::getApplicableBounds(const TSamples& samples) {
 		if (samples[i].x < minX) minX = samples[i].x;
 		if (samples[i].y < minY) minY = samples[i].y;
 	}
-	// Have two points (upperLeft is minX,minY) that define a bounding rect of samples
+	// Have two points upperLeft (minX,minY) bottomRight (maxX, maxY)
+	// that define a bounding rect of samples
 
-	// TODO use cv::Size
-	int width = maxX - minX + 1;
-	int height = maxY - minY + 1;
-	// assert width and height <= neighborhoodSize
-	assert(width <= neighborhoodSize);
+	// !!! Size is one larger
+	cv::Size resultSize = cv::Size(maxX - minX + 1, maxY - minY + 1);
+	cv::Point ul = cv::Point(minX, minY);
+	cv::Rect result = cv::Rect(ul, resultSize);
 
+	// !!! Note that result.br() is not (maxX, maxY)
+	assert(resultSize.width <= neighborhoodSize and resultSize.height <= neighborhoodSize);
+	return result;
+}
 
-	// TODO should break this up:  produce candidateRect, produce expandedRect, clip expandedRect
+// Square rect of constant dimension centered over given rect
+cv::Rect sal::Bounder::coveringSquareRect(const cv::Rect rect)
+{
+	// Get delta Size: disparity or difference from wanted dimension
+	cv::Size windowSize = cv::Size(neighborhoodSize, neighborhoodSize);
+	cv::Size disparity = windowSize - rect.size();
 
-	// Desire a square bounding rect of dimension neighborhoodSize.
-	// (to distribute the kernel result to all density estimates it is part of)
-
-	// Get the x and y disparity: difference from wanted dimension
-	int widthDisparity = (neighborhoodSize - width);	// The difference in width from neighborhoodSize
-	int heightDisparity = (neighborhoodSize - height);
-	assert(widthDisparity >= 0);
+	//int widthDisparity = (neighborhoodSize - size.width);	// The difference in width from neighborhoodSize
+	//int heightDisparity = (neighborhoodSize - height);
+	assert(disparity.width >= 0);
 
 	// We don't divide the disparity across the rect,
 	// the rect expands in the direction of the upper (minY) and left( minX)
 	// TODO use openCV rect+=size to expand
 	// TODO neighborhoodSize is not a size, is a dim
-	cv::Rect candidateRect = cv::Rect(
-			minX - widthDisparity, // x
-			minY - heightDisparity, // y
+	/*
+	 cv::Rect candidateRect = cv::Rect(
+			minX - disparity.width, // x
+			minY - disparity.height, // y
 			neighborhoodSize, // width
 			neighborhoodSize  // height
-			);
-	// assert candidateRect is square of dimension neighborhoodSize
+	);
+	*/
+	cv::Rect resultRect = rect;	// copy
+	resultRect += disparity;	// expand to right and  bottom
 
-	// candidateResult may not be contained in image: clip to image
-	cv::Rect finalResult = candidateRect & imageRect;	// intersection
+
+	// TODO offset so centered
+	//cv::Point offset( deltaSize.width/2, deltaSize.height/2);
+	//faces[i] -= offset;
+	// assert resultRect is square of dimension neighborhoodSize
+	return resultRect;
+}
+
+
+cv::Rect sal::Bounder::clippedRectToImage(const cv::Rect rect)
+{
+	cv::Rect result = rect & imageRect;	// intersection
 
 	// Note that openCV rect.br() is NOT in the rect.
 	// not assert(candidateRect.contains(candidateRect.br()));
 	// assert(candidateRect.br().x <= candidateRect.x + candidaterRect.width)
 
-	// ensure finalResult is contained in image
+	// ensure result is contained in image
 	// Since br() is not contained, br().x can equal rect.width
-	assert(finalResult.x>=0 and finalResult.br().x<=imageRect.width and finalResult.y>=0 and finalResult.br().y<=imageRect.height);
-
-	// finalResult need not be square
-	// finalResult can be smaller than candidateRect, but must be larger than 1 pixel
-	// finalResult.width >= 1
-	return finalResult;
+	assert(result.x>=0 and result.br().x<=imageRect.width and result.y>=0 and result.br().y<=imageRect.height);
+	return result;
 }
+
+} // namespace
