@@ -17,6 +17,7 @@ Usually actual channel count is 1:grayscale or 3:color
 
 See also definitions of Vec4f not covered by this constant
 */
+//TODO channel count 5 for RGBA
 #define MAX_CHANNEL_COUNT 4
 
 /*

@@ -165,16 +165,7 @@ float KernelDensityInfo::entropy() {
 	else
 	{
 		// printf("Sample count non zero %i \n", sampleCount);
-		float totalWeight = 1.f;		// !!! Start with identity
-		for(int i=0; i<2; i++) {
-			totalWeight *= weights[i];
-			/*
-			// Product of weights across samples AND across channels
-			for(int j=0; j<KernelDensityInfo::channelCount; j++) {
-				totalWeight *= weights[i][j];
-			}
-			*/
-		}
+		float totalWeight = productOfWeights();
 		// Original code:
 		// float totalWeight = kernelInfo.firstWeight * kernelInfo.secondWeight;
 		// IOW product between pixel pairs

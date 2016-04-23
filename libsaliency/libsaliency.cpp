@@ -194,8 +194,9 @@ float ImageSaliencyDetector::calulateAngleKernel(
 		const float aNorm, const float angleBinWidth,
 		const int channelCount)
 {
-	float result;
 	/*
+	// Documentation: shows nesting when Channel ops have two operands, instead of first operand 'this'
+	// A little easier to understand.
 	float angleSum = sumChannels(
 			angleBetweenChannels(
 					angleBetweenChannels(anglesFirst, anglesSecond,
@@ -205,8 +206,14 @@ float ImageSaliencyDetector::calulateAngleKernel(
 					channelCount),
 			channelCount);
 	*/
-	float angleSum = 0;
-	result = gaussian(angleSum, aNorm, angleBinWidth);
+	const Channels &firstSecondAngleBetween = anglesFirst.angleBetweenChannels( anglesSecond, channelCount);
+	const Channels &thirdFourthAngleBetween = anglesThird.angleBetweenChannels( anglesFourth, channelCount);
+
+	float angleSum = firstSecondAngleBetween.angleBetweenChannels(thirdFourthAngleBetween, channelCount).sumChannels(channelCount);
+
+	// Result is in [0, 3 * pi]
+	assert(angleSum >=0 and angleSum <= 3*LARGER_THAN_PI);
+	float result = gaussian(angleSum, aNorm, angleBinWidth);
 	return result;
 }
 
@@ -223,7 +230,7 @@ void ImageSaliencyDetector::calculateWeights(
 	sample1Weight =
 			firstMags.deltaChannels( secondMags, countChannels).sumChannels(countChannels);
 	sample2Weight =
-				thirdMags.deltaChannels( fourthMags, countChannels).sumChannels(countChannels);
+			thirdMags.deltaChannels( fourthMags, countChannels).sumChannels(countChannels);
 }
 
 

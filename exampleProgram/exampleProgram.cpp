@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
 	// cv::Mat1f img = cv::imread("data/inGrayscale/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
 	// Very large image
 	//cv::Mat1f img = cv::imread("data/inGrayscale/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	//cv::Mat1f img = cv::imread("data/inGrayscale/scenery.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
 	// Color, 3 channels
 	cv::Mat3f img = cv::imread("data/inColor/scenery.jpg", CV_LOAD_IMAGE_COLOR);
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]) {
 
 	sal::ImageSaliencyDetector detector(img);
 	detector.setSamplingPercentage(0.10f);
+	detector.setNeighborhoodSize(10);
 
 	cout << "Computing...\n";
 	detector.compute();

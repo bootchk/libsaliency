@@ -23,17 +23,25 @@ public:
 	explicit Channels();
 	virtual ~Channels();
 
+	// Return Channels whose values are angle between this and other Channels (element-wise)
 	Channels angleBetweenChannels(
 			const Channels b,
 			const int actualChannelCount) const;
 
+	// Scalar sum of abs of values of Channels
 	float sumChannels( const int actualChannelCount);
 
+	// Return Channels whose values are abs of difference this and other (element-wise)
 	Channels deltaChannels (
 			Channels& other,
 			const int actualChannelCount);
 
-	float& operator[](int i);
+	// Obscure C++, see Scott Meyers "Effective C++"
+	// Overloaded operator
+	// Returns pointer to non-const (can be used on lhs) to float
+	float& operator[] (int i);
+	// Return pointer to const
+	const float& operator[] (int i) const;
 
 private:
 	std::array<float, MAX_CHANNEL_COUNT> channels;
