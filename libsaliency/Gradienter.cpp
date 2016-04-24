@@ -4,12 +4,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "Gradienter.h"
-#include "Smoother.h"
 
 
 namespace sal {
-
-
 
 Gradienter::Gradienter() { }
 Gradienter::~Gradienter() { }
@@ -18,26 +15,13 @@ Gradienter::~Gradienter() { }
 void Gradienter::compute(const cv::Mat& src) {
 	assert(!src.empty() && src.cols >= 3 && src.rows >= 3);
 
-
 	cv::Mat deltaX, deltaY;
 
-	// lkk Its not clear to me that smoothing is beneficial here ???
-	cv::Mat smoothedImg;
-	Smoother smoother(0);	// 0 means use default sigma
-
-	std::cout << "Smoothing...\n";
-	smoother.smoothImage(src, smoothedImg);
-
-	// TODO: src or smoothedImg
 	std::cout << "Derivatives...\n";
-	calculateXAndYDerivatives(smoothedImg, deltaX, deltaY);
+	calculateXAndYDerivatives(src, deltaX, deltaY);
 
 	std::cout << "Direction...\n";
 
-	/* Obsolete
-	calculateGradientDirections(deltaX, deltaY);
-	calculateGradientMagnitudes(deltaX, deltaY);
-	*/
 	calculateGradientDirectionsAndMagnitudes(deltaX, deltaY);
 }
 
@@ -83,6 +67,17 @@ void Gradienter::calculateGradientDirectionsAndMagnitudes(const cv::Mat& deltaX,
 	cv::cartToPolar(deltaX, deltaY, this->gradMagnitudes, this->gradOrientations);
 	// TODO merge mag and orient images into one image for memory locality
 	// call it gradient of dimension [width, height, channels=2]
+
+	/*
+	cv::Mat h;
+	std::vector<cv::Mat> g;
+	g.push_back(gradMagnitudes);
+	g.push_back(gradOrientations);
+	merge(g, h);
+	cv::Matx<float, 3, 2> element = h.at<cv::Matx<float, 3, 2>>(0,0);	// h.at<float>(0,0);
+	printf("foo %f\n", element(2,0));
+	*/
+
 }
 
 

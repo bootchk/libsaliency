@@ -29,27 +29,26 @@
 
 namespace sal {
 
-// Method of super class
-void SaliencyDetector::postProcessSaliencyMap(cv::Mat1f& salMap, const float& sigma)
+void ImageSaliencyDetector::postProcessSaliencyMap(const float& sigma)
 {
 	Smoother smoother(sigma);
 
 	cv::Mat1f filteredMap;
 
 	double minV = 1, maxV = 1;
-	cv::minMaxLoc(salMap, &minV, &maxV);
+	cv::minMaxLoc(this->saliencyMap, &minV, &maxV);
 
-	smoother.smoothImage(salMap, filteredMap);
-	filteredMap.copyTo(salMap);
+	smoother.smoothImage(this->saliencyMap, filteredMap);
+	filteredMap.copyTo(saliencyMap);
 	filteredMap.release();
 
 	// Smoothing twice effectively gets rid of unsightly rings caused by the Gaussian
 	smoother.setSigma(0.6f * sigma);
-	smoother.smoothImage(salMap, filteredMap);
+	smoother.smoothImage(saliencyMap, filteredMap);
 
 	// Normalize, overwriting salMap
 	// lkk alternative to commented out
-	cv::normalize(filteredMap, salMap, 0, 255, cv::NORM_MINMAX);
+	cv::normalize(filteredMap, saliencyMap, 0, 255, cv::NORM_MINMAX);
 	filteredMap.release();
 
 	/*
@@ -75,12 +74,27 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 	assert(src.channels() >= 1);	// at least one channel, grayscale or more
 	setSourceImage(src);
 
-	inImageSize = srcImage.size();
-	printf("Input image size %i, %i\n", inImageSize.width, inImageSize.height);
+	// Remember attributes
+	inImageSize = src.size();
+	// TODO channel
 
-	pdfEstimate.resizeTo(inImageSize, srcImage.channels(), neighborhoodSize);
+	printf("Input image size %i, %i, channels %i \n", inImageSize.width, inImageSize.height, src.channels());
 
+	pdfEstimate.resizeTo(inImageSize, src.channels(), neighborhoodSize);
 	// !!! column major order, i.e.  [row][col] addressing
+
+	// Pre processing ?
+	/*
+	std::cout << "Smoothing...\n";
+	cv::Mat smoothedImage;
+	Smoother smoother = Smoother(0);
+	smoother.smoothImage(src, smoothedImage);
+	computeGradient(smoothedImage);
+	 */
+
+	computeGradient(src);
+	// TODO eliminate all references to src image
+	// The algorithm only uses gradient, not original image
 }
 
 
@@ -390,8 +404,15 @@ void ImageSaliencyDetector::createSaliencyMap() {
 }
 
 
-void ImageSaliencyDetector::performPostProcessing() {
-	postProcessSaliencyMap(this->saliencyMap);
+void ImageSaliencyDetector::computeGradient(cv::Mat src) {
+	Gradienter gradienter;
+	gradienter.compute(src);
+
+	setMagnitudes(gradienter.getGradMagnitudes());
+	setOrientations(gradienter.getGradOrientations());
+
+	Quantizer quantizer;
+	quantizer.quantizeMagnitudes(magnitudes);
 }
 
 
@@ -404,14 +425,8 @@ void ImageSaliencyDetector::compute() {
 
 	srand(time(NULL));
 
-	// Get gradient information
-	Gradienter gradienter;
-	gradienter.compute(srcImage);
-	setMagnitudes(gradienter.getGradMagnitudes());
-	setOrientations(gradienter.getGradOrientations());
-
-	Quantizer quantizer;
-	quantizer.quantizeMagnitudes(magnitudes);
+	assert(!magnitudes.empty());
+	// computeGradient(srcImage);  moved to constructor
 
 	printf("Iterating on samples\n");
 

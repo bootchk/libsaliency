@@ -71,8 +71,6 @@ public:
 
 
 protected:
-	/// Process resultant saliency map to make it smooth and pretty
-	void postProcessSaliencyMap(cv::Mat1f& salMap, const float& sigma = 18.0f);
 
 	/// Percentage of image / frame pixels to use for calculations
 	float samplingPercentage;
@@ -101,11 +99,15 @@ public:
 	 */
 	void compute();
 
+	// void preProcessSource();
+	// Since we don't copy src, hard to do preprocess without overwriting src
 	/*!
-	 * Perform class specific post-processing of the saliency map
-	 */
-	void performPostProcessing();
-
+			 * pre and post process
+			 * Generally, smoothing and normalizing operations.
+			 * Optional, you can do this outside.
+			 */
+		/// Process resultant saliency map to make it smooth and pretty
+		void postProcessSaliencyMap(const float& sigma = 18.0f);
 
 public:
 	void setMagnitudes(const cv::Mat& other) { magnitudes = other; }
@@ -174,6 +176,8 @@ private:
 	 * Update kernel sums of pixels within the applicable region given
 	 */
 	void updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum);
+
+	void computeGradient(cv::Mat src);
 
 	/*!
 	 * Updates the saliency map using the most recent density estimates
