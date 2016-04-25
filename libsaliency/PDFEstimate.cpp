@@ -10,21 +10,21 @@ PDFEstimate::PDFEstimate() { }
 PDFEstimate::~PDFEstimate() { }
 
 
-void PDFEstimate::resizeTo(cv::Size inImageSize, const int channelCount, const int neighborhoodSize )
+void PDFEstimate::resizeTo(cv::Size srcSize, const int channelCount, const int neighborhoodSize )
 {
 	// !!! all instances have same channelCount
 	KernelDensityInfo::initClass(channelCount);
 
 	// densityEstimate per pixel, not channel
-	densityEstimates.resize(inImageSize.height);
-	for (int row = 0; row < inImageSize.height; ++row) {
-		densityEstimates[row].resize(inImageSize.width);
+	densityEstimates.resize(srcSize.height);
+	for (int row = 0; row < srcSize.height; ++row) {
+		densityEstimates[row].resize(srcSize.width);
 	}
-	// assert densityEstimates size equals inImageSize, and elements are initialized KernelDensityInfo
+	// assert densityEstimates size equals srcSize, and elements are initialized KernelDensityInfo
 	// (that is what std::vector.resize() does.)
 
-	height = inImageSize.height;
-	width = inImageSize.width;
+	height = srcSize.height;
+	width = srcSize.width;
 	// Other dimension: channelCount is KernelDensityInfo class var
 
 	// Parameter of the estimation algorithm

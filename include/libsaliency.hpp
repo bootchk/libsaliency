@@ -195,7 +195,8 @@ private:
 
 	sal::PDFEstimate pdfEstimate;
 
-	cv::Size inImageSize;	// At time submitted.
+	cv::Size srcSize;	// At time submitted.
+	int srcChannelCount;
 };
 
 

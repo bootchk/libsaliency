@@ -17,7 +17,7 @@ public:
 	explicit PDFEstimate();
 	virtual ~PDFEstimate();
 
-	void resizeTo(cv::Size inImageSize, const int channelCount, const int neighborhoodSize);	// basically, init()
+	void resizeTo(cv::Size srcSize, const int channelCount, const int neighborhoodSize);	// basically, init()
 	void updateApplicableRegion(const cv::Rect& bounds, const KernelDensityInfo& kernelSum);
 	void copyResultToGrayscaleImage(cv::Mat1f& saliencyMap);
 

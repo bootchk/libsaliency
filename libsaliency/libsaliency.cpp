@@ -75,12 +75,12 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 	setSourceImage(src);
 
 	// Remember attributes
-	inImageSize = src.size();
-	// TODO channel
+	this->srcSize = src.size();
+	this->srcChannelCount = src.channels();
 
-	printf("Input image size %i, %i, channels %i \n", inImageSize.width, inImageSize.height, src.channels());
+	printf("Input image size %i, %i, channels %i \n", srcSize.width, srcSize.height, src.channels());
 
-	pdfEstimate.resizeTo(inImageSize, src.channels(), neighborhoodSize);
+	pdfEstimate.resizeTo(srcSize, src.channels(), neighborhoodSize);
 	// !!! column major order, i.e.  [row][col] addressing
 
 	// Pre processing ?
@@ -93,8 +93,9 @@ ImageSaliencyDetector::ImageSaliencyDetector(const cv::Mat& src) {
 	 */
 
 	computeGradient(src);
-	// TODO eliminate all references to src image
+
 	// The algorithm only uses gradient, not original image
+	// We could src.release() but it would not free memory, since src is owned by the caller.
 }
 
 
@@ -250,13 +251,9 @@ void ImageSaliencyDetector::calculateWeights(
 
 
 void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDensityInfo& kernelInfo) {
-	assert(!srcImage.empty());
 	assert(!magnitudes.empty());
 	assert(!orientations.empty());
 	assert(samples.size() == COUNT_SAMPLE_POINTS);
-
-	int imgWidth = srcImage.cols, imgHeight = srcImage.rows;
-	int channelCount = srcImage.channels();
 
 	float sampleDistance1 = 0.f;
 	float sampleDistance2 = 0.f;
@@ -264,7 +261,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 
 	// TODO Document magic numbers
 	float binDimension = 10.f;
-	float distanceBinWidth = sqrt(pow(imgWidth, 2) + pow(imgHeight, 2)) / binDimension;
+	float distanceBinWidth = sqrt(pow(srcSize.width, 2) + pow(srcSize.height, 2)) / binDimension;
 	float angleBinWidth = 3.14159265358979323846 / binDimension;
 	//float twoPI = 6.283185307;
 	float dNorm = (2.5066 * distanceBinWidth);
@@ -294,18 +291,18 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	Channels fourthMags;
 
 	// Difference between pixel mags and dirs, for each channel
-	extractChannelAttributes( first, firstAngles, orientations, channelCount);
-	extractChannelAttributes( second, secondAngles, orientations, channelCount);
-	extractChannelAttributes( third, thirdAngles, orientations, channelCount);
-	extractChannelAttributes( fourth, fourthAngles, orientations, channelCount);
+	extractChannelAttributes( first, firstAngles, orientations, srcChannelCount);
+	extractChannelAttributes( second, secondAngles, orientations, srcChannelCount);
+	extractChannelAttributes( third, thirdAngles, orientations, srcChannelCount);
+	extractChannelAttributes( fourth, fourthAngles, orientations, srcChannelCount);
 
 
-	extractChannelAttributes( first, firstMags, magnitudes, channelCount);
-	extractChannelAttributes( second, secondMags, magnitudes, channelCount);
-	extractChannelAttributes( third, thirdMags, magnitudes, channelCount);
-	extractChannelAttributes( fourth, fourthMags, magnitudes, channelCount);
+	extractChannelAttributes( first, firstMags, magnitudes, srcChannelCount);
+	extractChannelAttributes( second, secondMags, magnitudes, srcChannelCount);
+	extractChannelAttributes( third, thirdMags, magnitudes, srcChannelCount);
+	extractChannelAttributes( fourth, fourthMags, magnitudes, srcChannelCount);
 
-	//calculateChannelAttributes( third, fourth, secondPairAngles, secondPairMags, channelCount);
+	//calculateChannelAttributes( third, fourth, secondPairAngles, secondPairMags, srcChannelCount);
 
 	// !!! y first when addressing Mat using () or at()
 	//sampleAngle1 = sqrt(pow(orientations(first.y, first.x) - orientations(second.y, second.x), 2));
@@ -328,19 +325,19 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 			secondPairAttributes,
 			aNorm,
 			angleBinWidth,
-			channelCount);
+			srcChannelCount);
 	*/
 
 	float angleKernel = calulateAngleKernel(
 			firstAngles, secondAngles, thirdAngles, fourthAngles,
 			aNorm, angleBinWidth,
-			channelCount);
+			srcChannelCount);
 
 	/*
 	// Product of angle kernels
 	float productOfKernelChannels = kernelChannels[0];
 	// Multiply by any other channels
-	for (int channel=1; channel<channelCount; channel++) {
+	for (int channel=1; channel<srcChannelCount; channel++) {
 		productOfKernelChannels *= kernelChannels[channel];
 	}
 	*/
@@ -350,7 +347,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	// TODO
 	// Put weights into sampleResult (needed to call sampleResult.productOfWeights())
 	/*
-	for(int channel = 0; channel<channelCount; channel++) {
+	for(int channel = 0; channel<srcChannelCount; channel++) {
 		kernelInfo.weights[0][channel]  = firstPairMags[channel];	// first sample pair
 		kernelInfo.weights[1][channel]  = secondPairMags[channel];
 		// kernelInfo.secondWeight = secondPairAttributes[0].weight;
@@ -363,7 +360,7 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 			secondMags,
 			thirdMags,
 			fourthMags,
-			channelCount);
+			srcChannelCount);
 	kernelInfo.weights[0] = sample1Weight;
 	kernelInfo.weights[1] = sample2Weight;
 
@@ -383,10 +380,8 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 
 
 void ImageSaliencyDetector::createSaliencyMap() {
-	int width = srcImage.cols;
-	int height = srcImage.rows;
 
-	saliencyMap.create(height, width);
+	saliencyMap.create(srcSize.height, srcSize.width);
 	// assert saliency map, compared to pdfEstimate:
 	// - same width and height
 	// - one channel
@@ -414,10 +409,6 @@ void ImageSaliencyDetector::computeGradient(cv::Mat src) {
 void ImageSaliencyDetector::compute() {
 	clock_t tStart;
 
-	if (srcImage.empty()) {
-		throw std::logic_error("ImageSaliencyDetector: Source image is empty!");
-	}
-
 	srand(time(NULL));
 
 	assert(!magnitudes.empty());
@@ -428,18 +419,18 @@ void ImageSaliencyDetector::compute() {
 
 	// Perform iterative saliency detection mechanism
 	int squaredNHood = neighborhoodSize * neighborhoodSize;
-	int reqNumSamples = static_cast<int>(samplingPercentage * (srcImage.cols * srcImage.rows * squaredNHood));
+	int reqNumSamples = static_cast<int>(samplingPercentage * (srcSize.width * srcSize.height * squaredNHood));
 	int counter = 0;
 
-	// Sampler sampler(srcImage.rows, srcImage.cols, neighborhoodSize, reqNumSamples);
+	// Sampler sampler(srcSize.height, srcSize.width, neighborhoodSize, reqNumSamples);
 	tStart = clock();
     SamplePool samplePool;
-    samplePool.fillWithValidSamples(srcImage.rows, srcImage.cols, neighborhoodSize, reqNumSamples);
+    samplePool.fillWithValidSamples(srcSize.height, srcSize.width, neighborhoodSize, reqNumSamples);
     printf("Total(all threads) time generating samples: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 
     tStart = clock();
 
-    Bounder bounder = Bounder(neighborhoodSize,  cv::Rect(0, 0, srcImage.cols, srcImage.rows));
+    Bounder bounder = Bounder(neighborhoodSize,  cv::Rect(0, 0, srcSize.width, srcSize.height));
 
     KernelDensityInfo sampleResult = KernelDensityInfo();
 	while (counter < reqNumSamples) {
@@ -466,7 +457,7 @@ void ImageSaliencyDetector::compute() {
 	printf("Creating saliency image\n");
 	createSaliencyMap();
 	// saliency map is same dimensions as src, but fewer channels
-	assert(saliencyMap.cols == inImageSize.width and saliencyMap.rows == inImageSize.height);
+	assert(saliencyMap.cols == srcSize.width and saliencyMap.rows == srcSize.height);
 	assert(saliencyMap.channels()==1);	// saliency map is grayscale
 	printf("Size %i, %i\n", saliencyMap.cols, saliencyMap.rows);
 	printf("Total(all threads) time iterating: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
