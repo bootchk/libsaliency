@@ -10,6 +10,36 @@ namespace sal {
 Channels::Channels() {}
 Channels::~Channels() {}
 
+
+// result of scalar type float
+
+float Channels::sumChannels( const int actualChannelCount) const
+{
+	float result = 0;
+	// Not require all channel values positive
+	for (int channel=0; channel<actualChannelCount; channel++) {
+		result += abs(channels[channel]);
+	}
+	assert(result>=0.f);
+	return result;
+
+}
+
+float Channels::productChannels( const int actualChannelCount) const
+{
+	float result = 1;
+	// Require all channel values positive
+	for (int channel=0; channel<actualChannelCount; channel++) {
+		assert(channels[channel] >= 0.f );
+		result *= channels[channel];
+	}
+	assert(result>=0.f);
+	return result;
+}
+
+
+// result is of type Channels
+
 Channels Channels::angleBetweenChannels(
 		const Channels other,
 		const int actualChannelCount) const
@@ -27,23 +57,9 @@ Channels Channels::angleBetweenChannels(
 }
 
 
-
-float Channels::sumChannels( const int actualChannelCount)
-{
-	float result = 0;
-	// Not require all channel values positive
-	for (int channel=0; channel<actualChannelCount; channel++) {
-		result += abs(channels[channel]);
-	}
-	assert(result>=0.f);
-	return result;
-
-}
-
-// TODO const
 Channels Channels::deltaChannels (
 		Channels& other,
-		const int actualChannelCount)
+		const int actualChannelCount) const
 {
 	Channels result;
 
@@ -54,6 +70,20 @@ Channels Channels::deltaChannels (
 	// ensure every value is positive
 	return result;
 }
+
+Channels Channels::gaussianChannels ( const int actualChannelCount, const float height, const float width) const
+{
+	Channels result;
+
+	// Require values not isnan, since gaussian requires that
+	for (int channel=0; channel<actualChannelCount; channel++) {
+		result[channel] = gaussian( this->channels[channel], height, width );
+	}
+	// ensure every value is positive, since gaussian ensures that
+	return result;
+}
+
+
 
 // Overloaded
 //float& Channels::operator[] (int i) const

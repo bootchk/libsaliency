@@ -146,6 +146,14 @@ private:
 			const float aNorm, const float angleBinWidth,
 			const int channelCount);
 
+	float calulateChannelProductAngleKernel(
+				const Channels& anglesFirst,
+				const Channels& anglesSecond,
+				const Channels& anglesThird,
+				const Channels& anglesFourth,
+				const float aNorm, const float angleBinWidth,
+				const int channelCount);
+
 	void calculateWeights(
 			float& sample1Weight, float&sample2Weight,
 			Channels&firstMags,

@@ -233,6 +233,41 @@ float ImageSaliencyDetector::calulateAngleKernel(
 }
 
 
+float ImageSaliencyDetector::calulateChannelProductAngleKernel(
+		const Channels& anglesFirst,
+		const Channels& anglesSecond,
+		const Channels& anglesThird,
+		const Channels& anglesFourth,
+		const float aNorm, const float angleBinWidth,
+		const int channelCount)
+{
+	/*
+			// Documentation: shows nesting when Channel ops have two operands, instead of first operand 'this'
+			// A little easier to understand.
+			float angleSum = productChannels(
+			    gaussianChannels(
+					angleBetweenChannels(
+							angleBetweenChannels(anglesFirst, anglesSecond,
+									channelCount),
+							angleBetweenChannels(anglesThird, anglesFourth,
+									channelCount),
+							channelCount),
+					channelCount)
+				)   )
+
+	 */
+	const Channels& firstSecondAngleBetween = anglesFirst.angleBetweenChannels( anglesSecond, channelCount);
+	const Channels& thirdFourthAngleBetween = anglesThird.angleBetweenChannels( anglesFourth, channelCount);
+
+	const Channels angleChannels = firstSecondAngleBetween.angleBetweenChannels(thirdFourthAngleBetween, channelCount);
+	const Channels angleKernels = angleChannels.gaussianChannels(channelCount, aNorm, angleBinWidth);
+	// in range [ gaussian(0), gaussian(3pi) ]
+	float angleKernelProduct = angleKernels.productChannels(channelCount);
+
+	return angleKernelProduct;
+}
+
+
 void ImageSaliencyDetector::calculateWeights(
 		float& sample1Weight, float&sample2Weight,
 		Channels&firstMags,
@@ -328,10 +363,16 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 			srcChannelCount);
 	*/
 
+	/*
 	float angleKernel = calulateAngleKernel(
 			firstAngles, secondAngles, thirdAngles, fourthAngles,
 			aNorm, angleBinWidth,
 			srcChannelCount);
+	*/
+	float angleKernel = calulateChannelProductAngleKernel(
+				firstAngles, secondAngles, thirdAngles, fourthAngles,
+				aNorm, angleBinWidth,
+				srcChannelCount);
 
 	/*
 	// Product of angle kernels
