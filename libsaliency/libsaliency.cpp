@@ -380,11 +380,6 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	// assert kernelInfo is results from this sample
 }
 
-// KernelDensityInfo methods
-
-
-
-
 
 
 void ImageSaliencyDetector::createSaliencyMap() {
