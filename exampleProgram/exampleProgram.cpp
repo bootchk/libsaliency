@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
 	//cv::Mat1f img = cv::imread("data/inGrayscale/bike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
 	// Same as above but with thin black line cropped out
 	//cv::Mat1f img = cv::imread("data/inGrayscale/croppedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+	// Same as above but also thresholded
+	cv::Mat1f img = cv::imread("data/inGrayscale/croppedThresholdedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
 	// cv::Mat1f img = cv::imread("data/inGrayscale/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
 	// Very large image
 	//cv::Mat1f img = cv::imread("data/inGrayscale/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]) {
 
 	// Color, 3 channels
 	//cv::Mat3f img = cv::imread("data/inColor/scenery.jpg", CV_LOAD_IMAGE_COLOR);
-	cv::Mat3f img = cv::imread("data/inColor/sceneryThresholded.jpg", CV_LOAD_IMAGE_COLOR);
+	// cv::Mat3f img = cv::imread("data/inColor/sceneryThresholded.jpg", CV_LOAD_IMAGE_COLOR);
 	//cv::Mat3f img = cv::imread("data/inColor/miti2.jpg", CV_LOAD_IMAGE_COLOR);
 
 	if (img.empty()) {
@@ -45,7 +47,7 @@ int main(int argc, char *argv[]) {
 	detector.compute();
 
 	cout << "Post-processing...\n";
-	detector.postProcessSaliencyMap();
+	// TODO TEST detector.postProcessSaliencyMap();
 
 	cv::imwrite("SaliencyTestOutput.jpg", detector.getSaliencyMap());
 

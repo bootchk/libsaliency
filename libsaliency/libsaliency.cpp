@@ -261,6 +261,7 @@ float ImageSaliencyDetector::calulateChannelProductAngleKernel(
 
 	const Channels angleChannels = firstSecondAngleBetween.angleBetweenChannels(thirdFourthAngleBetween, channelCount);
 	const Channels angleKernels = angleChannels.gaussianChannels(channelCount, aNorm, angleBinWidth);
+	// TODO TEST const Channels angleKernels = angleChannels.logCauchyChannels(channelCount, aNorm, angleBinWidth);
 	// in range [ gaussian(0), gaussian(3pi) ]
 	float angleKernelProduct = angleKernels.productChannels(channelCount);
 
@@ -349,7 +350,9 @@ void ImageSaliencyDetector::calculateKernelSum(const TSamples& samples, KernelDe
 	// TODO weights per channel?????
 
 	// One attribute is distance between samples
-	distanceKernel = gaussian( sampleDistance1 - sampleDistance2, dNorm, distanceBinWidth);
+	// distanceKernel = gaussian( sampleDistance1 - sampleDistance2, dNorm, distanceBinWidth);
+	distanceKernel = proportionToNegLnCauchy( sampleDistance1 - sampleDistance2);
+	// TODO temp test
 
 	// One per channel, difference between angle attribute
 	// TODO kernels for other channels

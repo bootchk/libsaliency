@@ -51,6 +51,9 @@ public:
 			const int actualChannelCount,
 			const float height, const float width) const;
 
+	Channels logCauchyChannels (
+			const int actualChannelCount,
+			const float height, const float width) const;
 
 	// Obscure C++, see Scott Meyers "Effective C++"
 	// Overloaded operator

@@ -83,7 +83,18 @@ Channels Channels::gaussianChannels ( const int actualChannelCount, const float 
 	return result;
 }
 
+Channels Channels::logCauchyChannels ( const int actualChannelCount, const float height, const float width) const
+{
+	Channels result;
 
+	// Require values not isnan, since gaussian requires that
+	for (int channel=0; channel<actualChannelCount; channel++) {
+		//result[channel] = proportionToNegLnCauchy( this->channels[channel] );
+		result[channel] = logCauchy( this->channels[channel], height, width );
+	}
+	// ensure every value is positive, since kernel function ensures that
+	return result;
+}
 
 // Overloaded
 //float& Channels::operator[] (int i) const
