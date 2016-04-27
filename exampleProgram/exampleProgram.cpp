@@ -22,8 +22,10 @@ int main(int argc, char *argv[]) {
 	//cv::Mat1f img = cv::imread("data/inGrayscale/bike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
 	// Same as above but with thin black line cropped out
 	//cv::Mat1f img = cv::imread("data/inGrayscale/croppedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
-	// Same as above but also thresholded
-	cv::Mat1f img = cv::imread("data/inGrayscale/croppedThresholdedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+	// Same as above but also thresholded to B&W
+	//cv::Mat1f img = cv::imread("data/inGrayscale/croppedThresholdedBike.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
+	// Same as above but posterized to 3 colors
+	// cv::Mat1f img = cv::imread("data/inGrayscale/croppedBikePosterized3.jpeg", CV_LOAD_IMAGE_GRAYSCALE);
 	// cv::Mat1f img = cv::imread("data/inGrayscale/ads.ppm", CV_LOAD_IMAGE_GRAYSCALE);
 	// Very large image
 	//cv::Mat1f img = cv::imread("data/inGrayscale/IMG_9297.jpg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -33,6 +35,11 @@ int main(int argc, char *argv[]) {
 	//cv::Mat3f img = cv::imread("data/inColor/scenery.jpg", CV_LOAD_IMAGE_COLOR);
 	// cv::Mat3f img = cv::imread("data/inColor/sceneryThresholded.jpg", CV_LOAD_IMAGE_COLOR);
 	//cv::Mat3f img = cv::imread("data/inColor/miti2.jpg", CV_LOAD_IMAGE_COLOR);
+
+	// RGBD image and images of its color and depth components
+	// RGB w Depth as fourth channel
+	//cv::Mat4f img = cv::imread("data/RGBD/rgbdFromTUMunichStructureNoTexture.png", CV_LOAD_IMAGE_UNCHANGED);
+	cv::Mat3f img = cv::imread("data/RGBD/rgbFromTUMunichStructureNoTexture.png", CV_LOAD_IMAGE_UNCHANGED);
 
 	if (img.empty()) {
 		cout << "No image loaded. Exiting.\n";

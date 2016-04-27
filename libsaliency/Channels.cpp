@@ -44,7 +44,7 @@ Channels Channels::angleBetweenChannels(
 		const Channels other,
 		const int actualChannelCount) const
 {
-	assert(actualChannelCount < MAX_CHANNEL_COUNT);
+	assert(actualChannelCount <= MAX_CHANNEL_COUNT);
 
 	Channels result;
 
